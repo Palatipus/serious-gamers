@@ -1,3 +1,10 @@
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+
+const SUPABASE_URL = "https://ixqfaygxandnbnsqgdgo.supabase.co";
+const SUPABASE_KEY =
+  "YOUR_SUPABASE_KEY_HERE";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
 const form = document.getElementById("registerForm");
 const tableBody = document.querySelector("#playersTable tbody");
 const teamSelect = document.getElementById("team");
@@ -6,13 +13,8 @@ const fullMsg = document.getElementById("fullMessage");
 // Load data
 async function loadData() {
   try {
-    // Fetch registered players from backend
-    const playersRes = await fetch("/api/players");
-    const registered = await playersRes.json();
-
-    // Fetch teams from backend
-    const teamsRes = await fetch("/api/teams");
-    const teams = await teamsRes.json();
+    const { data: registered = [] } = await supabase.from("registrations_view").select("*");
+    const { data: teams = [] } = await supabase.from("teams").select("*");
 
     updateTable(registered);
     populateTeams(teams, registered);
@@ -23,14 +25,16 @@ async function loadData() {
   }
 }
 
+// Populate team dropdown with available teams
 function populateTeams(teams, registered) {
   teamSelect.innerHTML = '<option value="">-- Select Team --</option>';
-  const takenTeams = registered.map((p) => p.team_name || p.team);
 
-  teams.forEach((t) => {
-    if (!takenTeams.includes(t.name)) {
+  const takenIds = registered.map(p => p.team_id);
+
+  teams.forEach(t => {
+    if (!takenIds.includes(t.id)) {
       const opt = document.createElement("option");
-      opt.value = t.name;
+      opt.value = t.id; // send team_id to backend
       opt.textContent = t.name;
       teamSelect.appendChild(opt);
     }
@@ -44,6 +48,7 @@ function populateTeams(teams, registered) {
   }
 }
 
+// Update players table
 function updateTable(registered) {
   tableBody.innerHTML = "";
   registered.forEach((p, i) => {
@@ -58,33 +63,28 @@ function updateTable(registered) {
   });
 }
 
+// Register player
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const username = document.getElementById("username").value.trim();
   const whatsapp = document.getElementById("whatsapp").value.trim();
-  const team_name = teamSelect.value;
+  const team_id = teamSelect.value;
 
-  if (!username || !whatsapp || !team_name) return alert("Fill all fields!");
+  if (!username || !whatsapp || !team_id) return alert("Fill all fields!");
 
   try {
-    const res = await fetch("/api/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, whatsapp, team_name }),
-    });
-    const data = await res.json();
+    const { error } = await supabase
+      .from("registrations")
+      .insert([{ username, whatsapp, team_id }]);
 
-    if (!res.ok) {
-      alert(data.message || "Error registering player!");
-      return;
-    }
+    if (error) throw error;
 
-    alert(data.message);
+    alert("Registered successfully!");
     form.reset();
     loadData();
   } catch (err) {
-    console.error(err);
-    alert("Error registering player!");
+    console.error("Registration error:", err);
+    alert("Failed to register: " + err.message);
   }
 });
 

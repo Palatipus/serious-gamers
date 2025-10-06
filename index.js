@@ -11,7 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Get current directory (needed for ES modules)
+// Current directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -21,7 +21,7 @@ app.use(express.static(path.join(__dirname, "frontend")));
 // API routes
 app.use("/api", registerRoutes);
 
-// Catch-all route to serve index.html
+// Catch-all to serve index.html
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend", "index.html"));
 });

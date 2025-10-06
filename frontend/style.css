@@ -171,3 +171,9 @@ select#team {
 .table-body {
   color: white;
 }
+
+#playersTable th, #playersTable td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.6);
+}

@@ -69,11 +69,15 @@ function updateTable(registered) {
       <td>${i + 1}</td>
       <td>${p.username}</td>
       <td>${p.whatsapp}</td>
-      <td>${p.team_name || p.team}</td>
+      <td>
+        ${p.team_name} 
+        ${p.team_crest ? `<img src="${p.team_crest}" alt="${p.team_name}" width="30" />` : ""}
+      </td>
     `;
     tableBody.appendChild(row);
   });
 }
+
 
 // Register player
 form.addEventListener("submit", async (e) => {

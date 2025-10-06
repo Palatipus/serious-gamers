@@ -14,28 +14,32 @@ router.get('/teams', async (req, res) => {
   }
 });
 
-// Get all registered players
+// Get all registered players with team info
 router.get('/players', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('players_view').select('*').order('id', { ascending: true });
+    const { data, error } = await supabase
+      .from('registrations')
+      .select(`
+        id,
+        username,
+        whatsapp,
+        created_at,
+        team:teams(id, name, crest_url)
+      `)
+      .order('created_at', { ascending: true });
+
     if (error) throw error;
-    res.json(data || []);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
-// Register new player
-router.post('/register', async (req, res) => {
-  const { username, whatsapp, team_id } = req.body;
-  if (!username || !whatsapp || !team_id)
-    return res.status(400).json({ message: 'Missing required fields.' });
+    // Flatten team info for easier frontend usage
+    const formatted = data.map(p => ({
+      id: p.id,
+      username: p.username,
+      whatsapp: p.whatsapp,
+      team_name: p.team.name,
+      team_crest: p.team.crest_url
+    }));
 
-  try {
-    const { error } = await supabase.from('registrations').insert([{ username, whatsapp, team_id }]);
-    if (error) return res.status(400).json({ message: error.message });
-
-    res.json({ message: 'Registered successfully!' });
+    res.json(formatted);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

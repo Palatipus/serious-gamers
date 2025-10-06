@@ -6,7 +6,7 @@
 body {
   margin: 0;
   background: url(https://www.konami.com/efootball/s/img/main_page_1.png?v=840);
-  color: #fff;
+  color: #ad060f;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -27,8 +27,8 @@ header h1 {
 }
 
 header p {
-  font-size: 1rem;
-  color: #ccc;
+  font-size: 1.1rem;
+  color: #0716e2;
 }
 
 main {

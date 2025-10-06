@@ -167,3 +167,7 @@ select#team {
 .mtable-header {;
   color: white;
 }
+
+.table-body {
+  color: white;
+}

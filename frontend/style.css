@@ -2,6 +2,7 @@
   box-sizing: border-box;
   font-family: 'Poppins', sans-serif;
 }
+
 body {
   margin: 0;
   background: linear-gradient(135deg, #141E30, #243B55);
@@ -11,20 +12,24 @@ body {
   align-items: center;
   min-height: 100vh;
 }
+
 header {
   text-align: center;
   padding: 40px 20px 10px;
 }
+
 header h1 {
   font-size: 3rem;
   font-weight: 800;
   letter-spacing: 2px;
   text-shadow: 0 0 10px rgba(255,255,255,0.3);
 }
+
 header p {
   font-size: 1rem;
   color: #ccc;
 }
+
 main {
   width: 100%;
   display: flex;
@@ -32,6 +37,7 @@ main {
   align-items: center;
   padding-bottom: 60px;
 }
+
 .card {
   background: rgba(255,255,255,0.08);
   border-radius: 16px;
@@ -43,12 +49,17 @@ main {
   margin: 20px 0;
   transition: transform 0.2s ease;
 }
-.card:hover { transform: translateY(-4px); }
+
+.card:hover {
+  transform: translateY(-4px);
+}
+
 label {
   display: block;
   margin: 12px 0 5px;
   font-weight: 600;
 }
+
 input, select, button {
   width: 100%;
   padding: 10px;
@@ -57,12 +68,17 @@ input, select, button {
   margin-bottom: 12px;
   font-size: 1rem;
 }
+
 input, select {
   background: rgba(255,255,255,0.15);
   color: #fff;
   outline: none;
 }
-select option { color: #000; }
+
+select {
+  color: #000; /* Ensures dropdown text is readable */
+}
+
 button {
   background: #00BFFF;
   color: #fff;
@@ -70,30 +86,39 @@ button {
   cursor: pointer;
   transition: 0.3s;
 }
-button:hover { background: #1E90FF; }
+
+button:hover {
+  background: #1E90FF;
+}
+
 table {
   width: 90%;
   max-width: 900px;
   border-collapse: collapse;
   margin-bottom: 50px;
 }
+
 th, td {
   border: 1px solid rgba(255,255,255,0.2);
   padding: 10px;
   text-align: center;
 }
+
 th {
   background: rgba(255,255,255,0.15);
 }
+
 tr:nth-child(even) {
   background: rgba(255,255,255,0.05);
 }
+
 .full-message {
   color: #ff4d4d;
   font-weight: bold;
   text-align: center;
   margin: 15px 0;
 }
+
 footer {
   position: fixed;
   bottom: 8px;
@@ -102,29 +127,34 @@ footer {
   color: #ddd;
   font-size: 0.9rem;
 }
+
 footer a {
   color: #00BFFF;
   text-decoration: none;
 }
-footer a:hover { text-decoration: underline; }
-@media (max-width: 600px) {
-  header h1 { font-size: 2.2rem; }
-  .card { width: 95%; }
-  table { width: 100%; font-size: 0.9rem; }
-}
-select#team {
-  width: 100%;
-  padding: 8px;
-  font-size: 1em;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  background: #fff url('') no-repeat right 8px center;
+
+footer a:hover {
+  text-decoration: underline;
 }
 
-/* Optional: if you want a custom dropdown showing logo beside name */
-option {
-  padding-left: 30px;
-  background-repeat: no-repeat;
-  background-position: left center;
-  background-size: 20px 20px;
+@media (max-width: 600px) {
+  header h1 {
+    font-size: 2.2rem;
+  }
+  .card {
+    width: 95%;
+  }
+  table {
+    width: 100%;
+    font-size: 0.9rem;
+  }
+}
+
+select#team {
+  width: 100%;
+  padding: 10px;
+  font-size: 1rem;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: #fff; /* Keep simple */
 }

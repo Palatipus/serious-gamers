@@ -159,3 +159,7 @@ select#team {
   border: 1px solid #ccc;
   background: #fff; /* Keep simple */
 }
+.table-header {
+  background-color: #020202;
+  color: white;
+}

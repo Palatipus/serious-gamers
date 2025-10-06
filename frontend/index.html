@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Serious Gamers Tournament</title>
+  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+</head>
+<body>
+  <header>
+    <h1>SERIOUS GAMERS</h1>
+    <p>Website designed by Casper</p>
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>Register for Tournament</h2>
+      <form id="registerForm">
+        <label>Username</label>
+        <input type="text" id="username" required />
+
+        <label>WhatsApp Number</label>
+        <input type="text" id="whatsapp" required />
+
+        <label>Select Team</label>
+        <select id="team" required>
+          <option value="">-- Select Team --</option>
+        </select>
+
+        <button type="submit">Register</button>
+      </form>
+      <div class="full-message" id="fullMessage" style="display:none;">
+        Slots are filled up! Registration closed.
+      </div>
+    </div>
+
+    <h2>Registered Players</h2>
+    <table id="playersTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Username</th>
+          <th>WhatsApp</th>
+          <th>Team</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </main>
+
+  <footer>
+    <p>Contact: <em>casperagyengo12@gmail.com</em></p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

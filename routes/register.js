@@ -3,7 +3,23 @@ import { supabase } from '../lib/supabase.js';
 
 const router = express.Router();
 
-// Get all registered players
+// 🧩 Get all teams
+router.get('/teams', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('teams')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (error) throw error;
+
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 🧍‍♂️ Get all registered players
 router.get('/players', async (req, res) => {
   const { data, error } = await supabase
     .from('players')
@@ -14,7 +30,7 @@ router.get('/players', async (req, res) => {
   res.json(data || []);
 });
 
-// Register a new player
+// 📝 Register a new player
 router.post('/register', async (req, res) => {
   const { username, whatsapp, team } = req.body;
 
@@ -22,14 +38,17 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ message: 'Missing required fields.' });
   }
 
-  // check if 32 slots are filled
-  const { data: players, error: errPlayers } = await supabase.from('players').select('*');
+  // Check if 32 slots are filled
+  const { data: players, error: errPlayers } = await supabase
+    .from('players')
+    .select('*');
+
   if (errPlayers) return res.status(500).json({ error: errPlayers.message });
 
   if (players.length >= 32)
     return res.status(400).json({ message: 'Slots are filled up!' });
 
-  // check if team already taken
+  // Check if team already taken
   const { data: existing, error: errExisting } = await supabase
     .from('players')
     .select('*')
@@ -40,8 +59,11 @@ router.post('/register', async (req, res) => {
   if (existing && existing.length > 0)
     return res.status(400).json({ message: 'Team already taken!' });
 
-  // insert player
-  const { error } = await supabase.from('players').insert([{ username, whatsapp, team }]);
+  // Insert player
+  const { error } = await supabase
+    .from('players')
+    .insert([{ username, whatsapp, team }]);
+
   if (error) return res.status(500).json({ error: error.message });
 
   res.json({ message: 'Registered successfully!' });

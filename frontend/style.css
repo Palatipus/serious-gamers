@@ -112,3 +112,19 @@ footer a:hover { text-decoration: underline; }
   .card { width: 95%; }
   table { width: 100%; font-size: 0.9rem; }
 }
+select#team {
+  width: 100%;
+  padding: 8px;
+  font-size: 1em;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: #fff url('') no-repeat right 8px center;
+}
+
+/* Optional: if you want a custom dropdown showing logo beside name */
+option {
+  padding-left: 30px;
+  background-repeat: no-repeat;
+  background-position: left center;
+  background-size: 20px 20px;
+}

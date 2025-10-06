@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase.js';
 
 const router = express.Router();
 
-// 🧩 Get all teams
+// Get all teams
 router.get('/teams', async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -19,12 +19,11 @@ router.get('/teams', async (req, res) => {
   }
 });
 
-// 🧍‍♂️ Get all registered players
+// Get all registered players (frontend display)
 router.get('/players', async (req, res) => {
   try {
-    // Use the view or the registrations table for frontend display
     const { data, error } = await supabase
-      .from('players_view')  // <- change to players_view
+      .from('players_view') // use players_view
       .select('*')
       .order('id', { ascending: true });
 
@@ -36,16 +35,16 @@ router.get('/players', async (req, res) => {
   }
 });
 
-// 📝 Register a new player
+// Register a new player
 router.post('/register', async (req, res) => {
-  const { username, whatsapp, team_name } = req.body; // match frontend
+  const { username, whatsapp, team_name } = req.body;
 
   if (!username || !whatsapp || !team_name) {
     return res.status(400).json({ message: 'Missing required fields.' });
   }
 
   try {
-    // Check if 32 slots are filled
+    // Check if slots are filled
     const { data: registered, error: regErr } = await supabase
       .from('registrations')
       .select('*');

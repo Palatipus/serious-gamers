@@ -15,17 +15,17 @@ app.use(express.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Serve frontend files from the "frontend" folder
+// Serve frontend files
 app.use(express.static(path.join(__dirname, "frontend")));
 
 // API routes
 app.use("/api", registerRoutes);
 
-// Catch-all route to serve index.html for unknown routes
+// Catch-all route to serve index.html
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend", "index.html"));
 });
 
-// Start the server
+// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

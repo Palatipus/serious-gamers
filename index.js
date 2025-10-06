@@ -8,24 +8,26 @@ import registerRoutes from "./routes/register.js";
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+// ✅ Middleware
+app.use(cors()); // allow all origins (you can restrict in production)
 app.use(express.json());
 
 // Get current directory (needed for ES modules)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 👉 Serve frontend files from the "frontend" folder
+// ✅ Serve frontend files
 app.use(express.static(path.join(__dirname, "frontend")));
 
-// 👉 API routes (your backend logic)
+// ✅ API routes
 app.use("/api", registerRoutes);
 
-// 👉 Catch-all route to serve index.html for any unknown route
+// ✅ Catch-all route for frontend routing (React/SPA support)
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend", "index.html"));
 });
 
-// 👉 Start the server
+// ✅ Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));

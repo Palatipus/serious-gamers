@@ -1,6 +1,5 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-// ✅ Supabase credentials
 const SUPABASE_URL = "https://ixqfaygxandnbnsqgdgo.supabase.co";
 const SUPABASE_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4cWZheWd4YW5kbmJuc3FnZGdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzczNjYsImV4cCI6MjA2NzMxMzM2Nn0.EfTW6YqqGb2tjTn0YKnZT1JTo8AuJpl-v9z745pSScw";
@@ -13,24 +12,42 @@ const fullMsg = document.getElementById("fullMessage");
 
 // Load data
 async function loadData() {
-  const { data: players } = await supabase.from("players").select("*");
-  const { data: teams } = await supabase.from("teams").select("*");
+  try {
+    // Fetch registered players
+    const { data: registered = [], error: regErr } = await supabase
+      .from("registrations")
+      .select("*");
 
-  updateTable(players);
-  populateTeams(teams, players);
-  fullMsg.style.display = players.length >= 32 ? "block" : "none";
+    if (regErr) console.error("Registrations fetch error:", regErr.message);
+
+    // Fetch all teams
+    const { data: teams = [], error: teamsErr } = await supabase
+      .from("teams")
+      .select("*");
+
+    if (teamsErr) console.error("Teams fetch error:", teamsErr.message);
+
+    updateTable(registered);
+    populateTeams(teams, registered);
+
+    fullMsg.style.display = registered.length >= 32 ? "block" : "none";
+  } catch (err) {
+    console.error("Error loading data:", err);
+  }
 }
 
-function populateTeams(teams, players) {
+// Populate team dropdown
+function populateTeams(teams, registered) {
   teamSelect.innerHTML = '<option value="">-- Select Team --</option>';
-  const taken = players.map((p) => p.team);
+
+  const takenTeams = registered.map((p) => p.team_name || p.team);
 
   teams.forEach((t) => {
-    if (!taken.includes(t.name)) {
+    if (!takenTeams.includes(t.name)) {
       const opt = document.createElement("option");
       opt.value = t.name;
       opt.textContent = t.name;
-      opt.dataset.crest = t.crest_url;
+      opt.dataset.crest = t.crest_url; // optional
       teamSelect.appendChild(opt);
     }
   });
@@ -43,15 +60,16 @@ function populateTeams(teams, players) {
   }
 }
 
-function updateTable(players) {
+// Update players table
+function updateTable(registered) {
   tableBody.innerHTML = "";
-  players.forEach((p, i) => {
+  registered.forEach((p, i) => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${i + 1}</td>
       <td>${p.username}</td>
       <td>${p.whatsapp}</td>
-      <td>${p.team}</td>
+      <td>${p.team_name || p.team}</td>
     `;
     tableBody.appendChild(row);
   });
@@ -62,38 +80,48 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const username = document.getElementById("username").value.trim();
   const whatsapp = document.getElementById("whatsapp").value.trim();
-  const team = document.getElementById("team").value;
+  const team = teamSelect.value;
 
   if (!username || !whatsapp || !team) return alert("Fill all fields!");
 
-  const { data: existing } = await supabase
-    .from("players")
-    .select("*")
-    .eq("team", team);
+  try {
+    // Check if team already taken
+    const { data: existing = [], error: existingErr } = await supabase
+      .from("registrations")
+      .select("*")
+      .eq("team_name", team);
 
-  if (existing && existing.length > 0) {
-    alert("Team already taken!");
-    return;
-  }
+    if (existingErr) throw existingErr;
+    if (existing.length > 0) {
+      alert("Team already taken!");
+      return;
+    }
 
-  const { data: players } = await supabase.from("players").select("*");
-  if (players.length >= 32) {
-    alert("Slots filled up!");
-    return;
-  }
+    // Check slot limit
+    const { data: registered = [], error: regErr } = await supabase
+      .from("registrations")
+      .select("*");
+    if (regErr) throw regErr;
+    if (registered.length >= 32) {
+      alert("Slots filled up!");
+      return;
+    }
 
-  const { error } = await supabase
-    .from("players")
-    .insert([{ username, whatsapp, team }]);
+    // Insert player
+    const { error: insertErr } = await supabase
+      .from("registrations")
+      .insert([{ username, whatsapp, team_name: team }]);
 
-  if (error) {
-    console.error(error);
-    alert("Error registering");
-  } else {
+    if (insertErr) throw insertErr;
+
     alert("Registered successfully!");
     form.reset();
     loadData();
+  } catch (err) {
+    console.error("Registration error:", err);
+    alert("Error registering player!");
   }
 });
 
+// Initial load
 loadData();

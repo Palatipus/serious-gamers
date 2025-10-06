@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: serious-gamers-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node index.js
+    envVars:
+      - key: PORT
+        value: 5000

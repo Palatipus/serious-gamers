@@ -1,7 +1,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 const SUPABASE_URL = "https://ixqfaygxandnbnsqgdgo.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4cWZheWd4YW5kbmJuc3FnZGdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzczNjYsImV4cCI6MjA2NzMxMzM2Nn0.EfTW6YqqGb2tjTn0YKnZT1JTo8AuJpl-v9z745pSScw
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4cWZheWd4YW5kbmJuc3FnZGdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MzczNjYsImV4cCI6MjA2NzMxMzM2Nn0.EfTW6YqqGb2tjTn0YKnZT1JTo8AuJpl-v9z745pSScw";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const form = document.getElementById("registerForm");

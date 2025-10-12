@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin • Serious Gamers</title>
+  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+</head>
+<body>
+<header>
+  <h1>SERIOUS GAMERS • Admin</h1>
+  <p>Website designed by Casper</p>
+</header>
+
+<main>
+  <div class="card" id="loginCard">
+    <h2>Admin Login</h2>
+    <div class="row">
+      <div class="col">
+        <label>Email</label>
+        <input id="email" type="email" placeholder="director@seriousgamers.com" />
+      </div>
+      <div class="col">
+        <label>Password</label>
+        <input id="password" type="password" placeholder="••••••••" />
+      </div>
+    </div>
+    <button id="loginBtn">Login</button>
+    <p class="center"><a href="fixtures.html">View Fixtures</a> • <a href="groups.html">View Groups</a></p>
+  </div>
+
+  <div class="card" id="adminCard" style="display:none">
+    <h2>Admin Panel</h2>
+    <div class="row">
+      <button id="genGroupsBtn">Generate Random Groups (A–H)</button>
+      <button id="genFixturesBtn">Generate Group Fixtures</button>
+      <button id="logoutBtn" style="background:#ff5a5a">Logout</button>
+    </div>
+
+    <h3 style="margin-top:24px">Manual Grouping</h3>
+    <div class="row">
+      <div class="col">
+        <label>Team</label>
+        <select id="teamSelect"></select>
+      </div>
+      <div class="col">
+        <label>Group</label>
+        <select id="groupSelect">
+          <option value="A">A</option><option value="B">B</option>
+          <option value="C">C</option><option value="D">D</option>
+          <option value="E">E</option><option value="F">F</option>
+          <option value="G">G</option><option value="H">H</option>
+        </select>
+      </div>
+      <div class="col" style="align-self:end">
+        <button id="assignBtn">Assign</button>
+      </div>
+    </div>
+
+    <h3 style="margin-top:24px">Current Groups</h3>
+    <div id="groupsContainer"></div>
+  </div>
+</main>
+
+<footer>
+  <p>Contact: <em>casperagyengo12@gmail.com</em></p>
+</footer>
+
+<script type="module">
+const api = path => fetch(path);
+const BASE = '';
+
+const loginCard = document.getElementById('loginCard');
+const adminCard = document.getElementById('adminCard');
+const emailEl = document.getElementById('email');
+const passEl = document.getElementById('password');
+const loginBtn = document.getElementById('loginBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+
+const genGroupsBtn = document.getElementById('genGroupsBtn');
+const genFixturesBtn = document.getElementById('genFixturesBtn');
+const assignBtn = document.getElementById('assignBtn');
+const teamSelect = document.getElementById('teamSelect');
+const groupSelect = document.getElementById('groupSelect');
+const groupsContainer = document.getElementById('groupsContainer');
+
+function token() { return localStorage.getItem('sg_admin_token'); }
+function setLoggedIn(on) {
+  loginCard.style.display = on ? 'none' : 'block';
+  adminCard.style.display = on ? 'block' : 'none';
+}
+
+async function login() {
+  const email = emailEl.value.trim();
+  const password = passEl.value.trim();
+  const r = await fetch(`${BASE}/api/admin/login`, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  if (!r.ok) { alert('Login failed'); return; }
+  const { token } = await r.json();
+  localStorage.setItem('sg_admin_token', token);
+  setLoggedIn(true);
+  refreshGroups();
+  loadTeamOptions();
+}
+
+loginBtn.onclick = login;
+logoutBtn.onclick = () => { localStorage.removeItem('sg_admin_token'); setLoggedIn(false); };
+
+async function refreshGroups() {
+  const r = await fetch(`${BASE}/api/groups`);
+  const groups = await r.json();
+  const by = {};
+  groups.forEach(g => {
+    by[g.group_name] = by[g.group_name] || [];
+    by[g.group_name].push(g.team_name);
+  });
+  const order = ['A','B','C','D','E','F','G','H'];
+  groupsContainer.innerHTML = order.map(letter => {
+    const items = (by[letter] || []).map(n => `<span class="badge">${n}</span>`).join(' ');
+    return `<div class="card"><strong>Group ${letter}</strong><div style="margin-top:8px">${items || '<em>empty</em>'}</div></div>`;
+  }).join('');
+}
+
+async function loadTeamOptions() {
+  // registered teams come from registrations -> team_id -> teams
+  const regsRes = await fetch(`${BASE}/api/groups`); // pulls groups to know who is in already
+  const groups = await regsRes.json();
+
+  // fetch all registered team_ids
+  const regIdsRes = await fetch(`${BASE}/api/fixtures`); // quick hack to force backend warm; ignore
+  // Better: fetch teams directly from Supabase via a helper API if needed.
+  // For admin assignment we list ALL teams from "teams" table so you can move any team.
+  const teamsRes = await fetch(`${BASE}/api/fixtures`); // ignore output; just warming
+  // Instead call a small inline fetch to teams:
+  const t = await fetch('/api/teams'); // we’ll add a tiny endpoint below
+  const teams = t.ok ? await t.json() : [];
+
+  teamSelect.innerHTML = teams.map(tt => `<option value="${tt.id}">${tt.name}</option>`).join('');
+}
+
+assignBtn.onclick = async () => {
+  const team_id = Number(teamSelect.value);
+  const group_name = groupSelect.value;
+  const r = await fetch(`${BASE}/api/groups/assign`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type':'application/json',
+      'x-admin-token': token()
+    },
+    body: JSON.stringify({ team_id, group_name })
+  });
+  if (!r.ok) { const e = await r.json(); alert(e.error || 'Failed'); return; }
+  await refreshGroups();
+  alert('Assigned');
+};
+
+genGroupsBtn.onclick = async () => {
+  const r = await fetch(`${BASE}/api/groups/generate`, {
+    method: 'POST',
+    headers: { 'x-admin-token': token() }
+  });
+  const j = await r.json();
+  if (!r.ok) { alert(j.error || 'Failed'); return; }
+  await refreshGroups();
+  alert('Groups generated');
+};
+
+genFixturesBtn.onclick = async () => {
+  const r = await fetch(`${BASE}/api/fixtures/generate`, {
+    method: 'POST',
+    headers: { 'x-admin-token': token() }
+  });
+  const j = await r.json();
+  if (!r.ok) { alert(j.error || 'Failed'); return; }
+  alert(`Fixtures generated (${j.count})`);
+};
+
+(function init(){
+  if (token()) { setLoggedIn(true); refreshGroups(); loadTeamOptions(); }
+})();
+</script>
+</body>
+</html>

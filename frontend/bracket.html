@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bracket — Serious Gamers</title>
+  <link rel="stylesheet" href="tournament.css">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    .bracket-wrap {
+      width: 100%;
+      max-width: 1200px;
+      padding: 0 20px 80px;
+      overflow-x: auto;
+    }
+
+    .bracket-container {
+      display: flex;
+      gap: 0;
+      min-width: 900px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .round-col {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      flex: 1;
+      position: relative;
+    }
+
+    .round-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 3px;
+      color: var(--primary);
+      text-align: center;
+      text-transform: uppercase;
+      padding: 0 10px 20px;
+    }
+
+    .matches-col {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-around;
+      flex: 1;
+      gap: 10px;
+    }
+
+    .bracket-match {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin: 6px 8px;
+      backdrop-filter: blur(6px);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .bracket-match:hover {
+      border-color: rgba(0,191,255,0.5);
+      box-shadow: var(--glow);
+    }
+
+    .bracket-match.confirmed {
+      border-color: rgba(255, 215, 0, 0.4);
+      background: rgba(255, 215, 0, 0.04);
+    }
+
+    .bracket-team {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 5px 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .bracket-team:first-child {
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+      margin-bottom: 2px;
+    }
+
+    .bracket-team:last-child {
+      padding-top: 6px;
+    }
+
+    .bracket-score {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      font-weight: 900;
+      color: var(--gold);
+    }
+
+    .bracket-team.winner .bracket-name {
+      color: var(--gold);
+    }
+
+    .bracket-name {
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .tbd {
+      color: var(--text-dim);
+      font-style: italic;
+      font-size: 0.8rem;
+    }
+
+    .trophy {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .trophy-icon {
+      font-size: 4rem;
+      filter: drop-shadow(0 0 20px rgba(255,215,0,0.6));
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    .trophy-name {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.1rem;
+      color: var(--gold);
+      letter-spacing: 3px;
+      margin-top: 8px;
+      text-shadow: 0 0 20px rgba(255,215,0,0.5);
+    }
+
+    .connector-h {
+      display: flex;
+      align-items: center;
+      padding: 0 0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--text-dim);
+    }
+
+    .empty-state h3 {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--text);
+      margin-bottom: 8px;
+      font-size: 1.2rem;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">⚽ SERIOUS GAMERS</a>
+    <div class="nav-links">
+      <a href="index.html">Register</a>
+      <a href="groups.html">Groups</a>
+      <a href="fixtures.html">Fixtures</a>
+      <a href="bracket.html" class="active">Bracket</a>
+      <a href="admin.html">Admin</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>KNOCKOUT STAGE</h1>
+  <p>Quarter Finals · Semi Finals · Final</p>
+</div>
+
+<div class="bracket-wrap">
+  <div id="bracketContainer">
+    <div class="empty-state">
+      <div class="spinner" style="width:40px;height:40px;border-width:3px;margin:0 auto 20px;"></div>
+      <h3>Loading bracket...</h3>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>Contact: <em>casperagyengo12@gmail.com</em></p>
+</footer>
+
+<script type="module">
+  async function loadBracket() {
+    try {
+      const res = await fetch('/api/matches');
+      const all = await res.json();
+
+      const qf = all.filter(m => m.stage === 'quarter-final').sort((a, b) => (a.match_order || 0) - (b.match_order || 0));
+      const sf = all.filter(m => m.stage === 'semi-final').sort((a, b) => (a.match_order || 0) - (b.match_order || 0));
+      const fi = all.filter(m => m.stage === 'final');
+
+      const container = document.getElementById('bracketContainer');
+
+      if (!qf.length) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div style="font-size:4rem;margin-bottom:16px;opacity:0.4">🏆</div>
+            <h3>Knockout Stage Not Started</h3>
+            <p>Complete the group stage first. The admin will generate the knockout bracket when ready.</p>
+            <br>
+            <a href="groups.html" class="btn btn-ghost" style="display:inline-flex">View Groups →</a>
+          </div>`;
+        return;
+      }
+
+      // Find champion
+      const champion = fi.length && fi[0].confirmed
+        ? (fi[0].home_score > fi[0].away_score ? fi[0].home_player : fi[0].away_player)
+        : null;
+
+      container.innerHTML = `
+        <div class="bracket-container">
+          <div class="round-col">
+            <div class="round-title">Quarter Finals</div>
+            <div class="matches-col" id="qfCol"></div>
+          </div>
+          <div class="round-col">
+            <div class="round-title">Semi Finals</div>
+            <div class="matches-col" id="sfCol"></div>
+          </div>
+          <div class="round-col" style="max-width:200px">
+            <div class="round-title">Final</div>
+            <div class="matches-col" id="fiCol"></div>
+          </div>
+          <div class="round-col" style="max-width:160px">
+            <div class="round-title">Champion</div>
+            <div class="trophy" id="trophy">
+              ${champion
+                ? `<div class="trophy-icon">🏆</div><div class="trophy-name">${champion}</div>`
+                : `<div class="trophy-icon" style="opacity:0.3;animation:none">🏆</div><div class="trophy-name" style="color:var(--text-dim);font-size:0.8rem">TBD</div>`
+              }
+            </div>
+          </div>
+        </div>`;
+
+      qf.forEach(m => document.getElementById('qfCol').innerHTML += matchCard(m));
+      sf.forEach(m => document.getElementById('sfCol').innerHTML += matchCard(m));
+      fi.forEach(m => document.getElementById('fiCol').innerHTML += matchCard(m));
+
+    } catch (err) {
+      document.getElementById('bracketContainer').innerHTML =
+        `<div class="alert alert-error">Failed to load bracket.</div>`;
+    }
+  }
+
+  function matchCard(m) {
+    const homeName = m.home_player || m.home_team_name || '—';
+    const awayName = m.away_player || m.away_team_name || '—';
+    const isTbd = !m.home_team_id && !m.away_team_id;
+
+    if (isTbd) return `
+      <div class="bracket-match">
+        <div class="bracket-team"><span class="tbd">TBD</span></div>
+        <div class="bracket-team"><span class="tbd">TBD</span></div>
+      </div>`;
+
+    const homeWin = m.confirmed && m.home_score > m.away_score;
+    const awayWin = m.confirmed && m.away_score > m.home_score;
+
+    return `
+      <div class="bracket-match ${m.confirmed ? 'confirmed' : ''}">
+        <div class="bracket-team ${homeWin ? 'winner' : ''}">
+          <span class="bracket-name">${homeName}</span>
+          <span class="bracket-score">${m.home_score !== null ? m.home_score : '-'}</span>
+        </div>
+        <div class="bracket-team ${awayWin ? 'winner' : ''}">
+          <span class="bracket-name">${awayName}</span>
+          <span class="bracket-score">${m.away_score !== null ? m.away_score : '-'}</span>
+        </div>
+      </div>`;
+  }
+
+  loadBracket();
+  setInterval(loadBracket, 30000);
+</script>
+
+</body>
+</html>

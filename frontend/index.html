@@ -3,14 +3,63 @@
 <head>
   <meta charset="UTF-8">
   <title>Serious Gamers Tournament</title>
+  <link rel="stylesheet" href="tournament.css">
   <link rel="stylesheet" href="style.css">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    /* Override style.css body for nav compat */
+    body { align-items: center; }
+
+    .main-content {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-bottom: 60px;
+    }
+
+    .reg-header {
+      text-align: center;
+      padding: 30px 20px 10px;
+    }
+
+    .reg-header h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2.8rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: #fff;
+      text-shadow: 0 0 30px rgba(0,191,255,0.6);
+      margin: 0;
+    }
+
+    .reg-header p {
+      color: rgba(232,244,255,0.6);
+      font-size: 1rem;
+      margin-top: 6px;
+    }
+  </style>
 </head>
 <body>
-  <header>
+
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">⚽ SERIOUS GAMERS</a>
+    <div class="nav-links">
+      <a href="index.html" class="active">Register</a>
+      <a href="groups.html">Groups</a>
+      <a href="fixtures.html">Fixtures</a>
+      <a href="bracket.html">Bracket</a>
+      <a href="admin.html">Admin</a>
+    </div>
+  </div>
+</nav>
+
+<div class="main-content">
+  <div class="reg-header">
     <h1>SERIOUS GAMERS</h1>
     <p>Website designed by Casper</p>
-  </header>
+  </div>
 
   <main>
     <div class="card">
@@ -53,7 +102,8 @@
   <footer>
     <p>Contact: <em>casperagyengo12@gmail.com</em></p>
   </footer>
+</div>
 
-  <script type="module" src="script.js"></script>
+<script type="module" src="script.js"></script>
 </body>
 </html>

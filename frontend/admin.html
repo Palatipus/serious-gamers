@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin — Serious Gamers</title>
+  <link rel="stylesheet" href="tournament.css">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    .admin-wrap {
+      width: 100%;
+      max-width: 900px;
+      padding: 0 20px 80px;
+    }
+
+    .admin-login-card {
+      max-width: 400px;
+      margin: 40px auto;
+    }
+
+    .admin-panel {
+      display: none;
+    }
+
+    .admin-panel.visible {
+      display: block;
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 30px;
+    }
+
+    .action-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      backdrop-filter: blur(8px);
+    }
+
+    .action-card h3 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.8rem;
+      color: var(--primary);
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    .action-card p {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    .section-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem;
+      letter-spacing: 3px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      padding: 16px 0 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .msg-area {
+      min-height: 40px;
+      margin-bottom: 16px;
+    }
+
+    .matches-admin-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .match-admin-row {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      backdrop-filter: blur(6px);
+    }
+
+    .match-admin-row.confirmed {
+      border-color: rgba(0, 200, 100, 0.3);
+      background: rgba(0, 200, 100, 0.04);
+    }
+
+    .match-teams {
+      flex: 1;
+      font-weight: 600;
+      font-size: 0.9rem;
+      min-width: 200px;
+    }
+
+    .match-score-display {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 900;
+      color: var(--gold);
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .match-group-tag {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.65rem;
+      color: var(--primary);
+      letter-spacing: 1px;
+      min-width: 50px;
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .filter-btn {
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text-dim);
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+    }
+
+    .filter-btn.active, .filter-btn:hover {
+      background: rgba(0, 191, 255, 0.1);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .admin-warning {
+      background: rgba(255, 77, 77, 0.08);
+      border: 1px solid rgba(255, 77, 77, 0.3);
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+      color: #ff8888;
+    }
+
+    .confirm-count {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    #logoutBtn {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">⚽ SERIOUS GAMERS</a>
+    <div class="nav-links">
+      <a href="index.html">Register</a>
+      <a href="groups.html">Groups</a>
+      <a href="fixtures.html">Fixtures</a>
+      <a href="bracket.html">Bracket</a>
+      <a href="admin.html" class="active">Admin</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>ADMIN PANEL</h1>
+  <p>Tournament Control Center</p>
+</div>
+
+<!-- LOGIN -->
+<div class="admin-wrap">
+  <div class="admin-login-card card" id="loginCard">
+    <h3 style="font-family:'Orbitron',sans-serif;color:var(--primary);letter-spacing:2px;margin-bottom:20px;font-size:0.95rem;">🔐 ADMIN LOGIN</h3>
+    <div class="form-group">
+      <label>Admin Password</label>
+      <input type="password" id="adminPwd" class="form-control" placeholder="Enter password">
+    </div>
+    <div id="loginMsg" class="msg-area"></div>
+    <button class="btn btn-primary" style="width:100%" onclick="login()">Login</button>
+  </div>
+
+  <!-- ADMIN PANEL -->
+  <div class="admin-panel" id="adminPanel">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <span style="color:var(--primary);font-weight:700;">✓ Admin Mode Active</span>
+      <button class="btn btn-ghost" id="logoutBtn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="msg-area" id="adminMsg"></div>
+
+    <!-- QUICK ACTIONS -->
+    <div class="section-title">Quick Actions</div>
+    <div class="action-grid">
+      <div class="action-card">
+        <h3>🎲 Generate Groups</h3>
+        <p>Randomly draw 32 registered teams into 8 groups of 4. This will clear existing groups and fixtures.</p>
+        <div class="confirm-count" id="regCount"></div>
+        <br>
+        <button class="btn btn-primary" onclick="generateGroups()">Generate Groups</button>
+      </div>
+
+      <div class="action-card">
+        <h3>⚡ Confirm All Group Scores</h3>
+        <p>Lock all entered scores in the group stage. Only matches with scores entered will be confirmed.</p>
+        <br>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-danger" onclick="confirmAll('all')">Confirm All</button>
+          <select id="confirmGroupSelect" class="form-control" style="width:auto;padding:8px 12px">
+            <option value="">By Group...</option>
+          </select>
+          <button class="btn btn-ghost" onclick="confirmAll('group')">Confirm Group</button>
+        </div>
+      </div>
+
+      <div class="action-card">
+        <h3>🏆 Generate Knockout</h3>
+        <p>After group stage is complete, auto-generate the Quarter Final bracket from top 2 teams per group.</p>
+        <br>
+        <button class="btn btn-gold" onclick="generateKnockout()">Generate Bracket</button>
+      </div>
+    </div>
+
+    <div class="admin-warning">
+      ⚠️ <strong>Note:</strong> Confirming scores is irreversible. Double-check all scores before confirming.
+    </div>
+
+    <!-- MATCHES TABLE -->
+    <div class="section-title">All Matches</div>
+    <div class="filter-bar" id="adminFilterBar">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="pending">Pending</button>
+      <button class="filter-btn" data-filter="confirmed">Confirmed</button>
+    </div>
+
+    <div class="matches-admin-list" id="adminMatchList">
+      <div style="text-align:center;padding:30px;color:var(--text-dim)">Loading matches...</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>Contact: <em>casperagyengo12@gmail.com</em></p>
+</footer>
+
+<script type="module">
+  let adminPwd = '';
+  let allMatches = [];
+  let adminFilter = 'all';
+
+  window.login = async function() {
+    const pwd = document.getElementById('adminPwd').value;
+    if (!pwd) return;
+    
+    // Test the password by making a lightweight call
+    try {
+      const res = await fetch('/api/matches/confirm-all', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pwd, dry_run: true })
+      });
+      // If 403, wrong password; if anything else, password is likely ok
+      if (res.status === 403) {
+        document.getElementById('loginMsg').innerHTML = '<div class="alert alert-error">Wrong password.</div>';
+        return;
+      }
+    } catch (e) {}
+
+    adminPwd = pwd;
+    document.getElementById('loginCard').style.display = 'none';
+    document.getElementById('adminPanel').classList.add('visible');
+    loadAdminData();
+  };
+
+  window.logout = function() {
+    adminPwd = '';
+    document.getElementById('loginCard').style.display = 'block';
+    document.getElementById('adminPanel').classList.remove('visible');
+    document.getElementById('adminPwd').value = '';
+  };
+
+  // Allow pressing Enter to login
+  document.getElementById('adminPwd').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.login();
+  });
+
+  async function loadAdminData() {
+    try {
+      const [matchRes, playersRes] = await Promise.all([
+        fetch('/api/matches'),
+        fetch('/api/players')
+      ]);
+      allMatches = await matchRes.json();
+      const players = await matchRes.json();
+
+      // Populate registration count
+      const regRes = await fetch('/api/players');
+      const regs = await regRes.json();
+      document.getElementById('regCount').textContent = `${regs.length} / 32 teams registered`;
+
+      // Populate group select
+      const groups = [...new Set(allMatches.filter(m => m.group_name).map(m => m.group_name))].sort();
+      const sel = document.getElementById('confirmGroupSelect');
+      sel.innerHTML = '<option value="">By Group...</option>';
+      groups.forEach(g => sel.innerHTML += `<option value="${g}">Group ${g}</option>`);
+
+      renderAdminMatches();
+    } catch (e) {
+      showAdminMsg('Failed to load data.', 'error');
+    }
+  }
+
+  function renderAdminMatches() {
+    let filtered = allMatches;
+    if (adminFilter === 'pending') filtered = allMatches.filter(m => !m.confirmed);
+    if (adminFilter === 'confirmed') filtered = allMatches.filter(m => m.confirmed);
+
+    const container = document.getElementById('adminMatchList');
+    if (!filtered.length) {
+      container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-dim)">No matches found.</div>';
+      return;
+    }
+
+    container.innerHTML = filtered.map(m => {
+      const hasScore = m.home_score !== null && m.away_score !== null;
+      const scoreDisplay = hasScore ? `${m.home_score} – ${m.away_score}` : '- vs -';
+
+      return `
+        <div class="match-admin-row ${m.confirmed ? 'confirmed' : ''}" id="arow_${m.id}">
+          <div class="match-group-tag">${m.group_name ? 'GRP ' + m.group_name : (m.stage || '').replace('-', ' ').toUpperCase()}</div>
+          <div class="match-teams">${m.home_player || m.home_team_name} <span style="color:var(--text-dim)">vs</span> ${m.away_player || m.away_team_name}</div>
+          <div class="match-score-display">${scoreDisplay}</div>
+          ${m.confirmed
+            ? '<span class="badge badge-confirmed">✓ Locked</span>'
+            : `<button class="btn btn-danger btn-sm" onclick="confirmMatch(${m.id})" ${!hasScore ? 'disabled title="Enter score first"' : ''}>Confirm</button>`
+          }
+        </div>`;
+    }).join('');
+  }
+
+  // Filter bar
+  document.getElementById('adminFilterBar').addEventListener('click', e => {
+    const btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    adminFilter = btn.dataset.filter;
+    document.querySelectorAll('#adminFilterBar .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderAdminMatches();
+  });
+
+  window.generateGroups = async function() {
+    if (!confirm('⚠️ This will DELETE all existing groups and fixtures! Are you sure?')) return;
+    try {
+      showAdminMsg('Generating groups...', 'info');
+      const res = await fetch('/api/groups/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPwd })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error);
+      showAdminMsg(data.message, 'success');
+      await loadAdminData();
+    } catch (err) {
+      showAdminMsg(err.message, 'error');
+    }
+  };
+
+  window.confirmAll = async function(mode) {
+    const groupName = mode === 'group' ? document.getElementById('confirmGroupSelect').value : '';
+    if (mode === 'group' && !groupName) return showAdminMsg('Select a group first.', 'error');
+    if (!confirm(`Confirm all ${groupName ? 'Group ' + groupName : ''} match scores? This cannot be undone.`)) return;
+
+    try {
+      showAdminMsg('Confirming scores...', 'info');
+      const res = await fetch('/api/matches/confirm-all', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPwd, group_name: groupName || undefined })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error);
+      showAdminMsg(data.message, 'success');
+      await loadAdminData();
+    } catch (err) {
+      showAdminMsg(err.message, 'error');
+    }
+  };
+
+  window.confirmMatch = async function(id) {
+    try {
+      const res = await fetch(`/api/matches/${id}/confirm`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPwd })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error);
+      showAdminMsg(data.message, 'success');
+      await loadAdminData();
+    } catch (err) {
+      showAdminMsg(err.message, 'error');
+    }
+  };
+
+  window.generateKnockout = async function() {
+    if (!confirm('Generate knockout bracket from current group standings?')) return;
+    try {
+      showAdminMsg('Generating knockout bracket...', 'info');
+      const res = await fetch('/api/matches/generate-knockout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPwd })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.error);
+      showAdminMsg(data.message + ' Visit the Bracket page!', 'success');
+      await loadAdminData();
+    } catch (err) {
+      showAdminMsg(err.message, 'error');
+    }
+  };
+
+  function showAdminMsg(text, type = 'info') {
+    const area = document.getElementById('adminMsg');
+    area.innerHTML = `<div class="alert alert-${type}">${text}</div>`;
+    if (type !== 'error') setTimeout(() => area.innerHTML = '', 4000);
+  }
+</script>
+
+</body>
+</html>

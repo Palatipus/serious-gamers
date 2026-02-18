@@ -4,6 +4,8 @@ import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 import registerRoutes from "./routes/register.js";
+import groupRoutes from "./routes/groups.js";
+import matchRoutes from "./routes/matches.js";
 
 dotenv.config();
 
@@ -19,6 +21,8 @@ app.use(express.static(path.join(__dirname, "frontend")));
 
 // API routes
 app.use("/api", registerRoutes);
+app.use("/api", groupRoutes);
+app.use("/api", matchRoutes);
 
 // Catch-all route
 app.get("*", (req, res) => {

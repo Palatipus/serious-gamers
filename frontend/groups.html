@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Groups — Serious Gamers</title>
+  <link rel="stylesheet" href="tournament.css">
+  <link rel="stylesheet" href="style.css" disabled>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    .groups-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 20px;
+      width: 100%;
+      max-width: 1200px;
+      padding: 0 20px 60px;
+    }
+
+    .group-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      backdrop-filter: blur(8px);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .group-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow), var(--glow);
+    }
+
+    .standings-pos {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      width: 24px;
+    }
+
+    .standings-pos.top2 { color: var(--gold); }
+
+    .team-cell {
+      text-align: left;
+      font-weight: 600;
+    }
+
+    .team-player {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      display: block;
+    }
+
+    .stat-col {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.8rem;
+    }
+
+    .pts-col {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900;
+      color: var(--primary);
+      font-size: 1rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-dim);
+    }
+
+    .empty-state svg {
+      opacity: 0.3;
+      margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .top-bar {
+      width: 100%;
+      max-width: 1200px;
+      padding: 0 20px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .status-info {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a href="index.html" class="nav-logo">⚽ SERIOUS GAMERS</a>
+    <div class="nav-links">
+      <a href="index.html">Register</a>
+      <a href="groups.html" class="active">Groups</a>
+      <a href="fixtures.html">Fixtures</a>
+      <a href="bracket.html">Bracket</a>
+      <a href="admin.html">Admin</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page-header">
+  <h1>GROUP STAGE</h1>
+  <p>8 Groups · 4 Teams Each · Top 2 Qualify</p>
+</div>
+
+<div class="top-bar">
+  <div class="status-info" id="statusInfo">Loading groups...</div>
+</div>
+
+<div class="groups-grid" id="groupsGrid">
+  <div style="grid-column:1/-1">
+    <div class="empty-state">
+      <div class="spinner" style="width:40px;height:40px;border-width:3px;margin:0 auto 20px;"></div>
+      <h3>Loading...</h3>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>Contact: <em>casperagyengo12@gmail.com</em></p>
+</footer>
+
+<script type="module">
+  async function loadGroups() {
+    try {
+      const [groupsRes, playersRes] = await Promise.all([
+        fetch('/api/groups'),
+        fetch('/api/players')
+      ]);
+      const groups = await groupsRes.json();
+      const players = await playersRes.json();
+
+      const grid = document.getElementById('groupsGrid');
+      const statusInfo = document.getElementById('statusInfo');
+
+      if (!groups.length) {
+        grid.innerHTML = `
+          <div style="grid-column:1/-1">
+            <div class="empty-state">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+              </svg>
+              <h3>No Groups Yet</h3>
+              <p>Groups haven't been drawn yet. Check back soon or ask the admin to generate groups.</p>
+            </div>
+          </div>`;
+        statusInfo.textContent = 'Groups not yet generated';
+        return;
+      }
+
+      // Build player lookup
+      const playerByTeam = {};
+      players.forEach(p => { playerByTeam[p.team_id] = p.username; });
+
+      // Organise by group
+      const byGroup = {};
+      groups.forEach(g => {
+        if (!byGroup[g.group_name]) byGroup[g.group_name] = [];
+        byGroup[g.group_name].push(g);
+      });
+
+      // Sort each group by points, then GF
+      for (const gn of Object.keys(byGroup)) {
+        byGroup[gn].sort((a, b) => b.points - a.points || b.gf - a.gf || (a.ga - b.ga));
+      }
+
+      const groupNames = Object.keys(byGroup).sort();
+      statusInfo.textContent = `${groupNames.length} groups · ${groups.length} teams registered`;
+
+      grid.innerHTML = groupNames.map(gn => {
+        const teams = byGroup[gn];
+        const rows = teams.map((t, i) => {
+          const gd = t.gf - t.ga;
+          const posClass = i < 2 ? 'top2' : '';
+          return `
+            <tr>
+              <td><span class="standings-pos ${posClass}">${i + 1}</span></td>
+              <td class="team-cell">
+                ${playerByTeam[t.team_id] || '?'}
+                <span class="team-player">Team ID: ${t.team_id}</span>
+              </td>
+              <td class="stat-col">${t.played}</td>
+              <td class="stat-col">${t.won}</td>
+              <td class="stat-col">${t.drawn}</td>
+              <td class="stat-col">${t.lost}</td>
+              <td class="stat-col">${t.gf}:${t.ga}</td>
+              <td class="stat-col" style="color:${gd > 0 ? '#00c864' : gd < 0 ? '#ff4d4d' : 'inherit'}">${gd > 0 ? '+' : ''}${gd}</td>
+              <td class="pts-col">${t.points}</td>
+            </tr>`;
+        }).join('');
+
+        return `
+          <div class="group-card">
+            <div class="group-label">GROUP ${gn}</div>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>#</th><th>Player</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GF:GA</th><th>GD</th><th>PTS</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>`;
+      }).join('');
+
+    } catch (err) {
+      console.error(err);
+      document.getElementById('groupsGrid').innerHTML = `
+        <div style="grid-column:1/-1">
+          <div class="alert alert-error">Failed to load groups. Please refresh.</div>
+        </div>`;
+    }
+  }
+
+  loadGroups();
+  // Auto-refresh every 30 seconds
+  setInterval(loadGroups, 30000);
+</script>
+
+</body>
+</html>

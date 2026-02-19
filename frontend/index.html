@@ -16,6 +16,12 @@
     .login-card h2 { font-family:var(--font-head); font-size:1.3rem; letter-spacing:2px; margin-bottom:6px; }
     .login-card p { font-size:0.82rem; color:var(--text-dim); margin-bottom:24px; }
     .new-note { text-align:center; font-size:0.78rem; color:var(--text-dim); margin-top:14px; }
+    .admin-link { text-align:center; margin-top:20px; }
+    .admin-link a { font-size:0.78rem; color:var(--text-dim); text-decoration:none; display:inline-flex; align-items:center; gap:5px; padding:7px 16px; border:1px solid var(--border); border-radius:6px; transition:all 0.15s; }
+    .admin-link a:hover { color:var(--red); border-color:rgba(255,59,92,0.3); background:rgba(255,59,92,0.06); }
+    .already-in { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 18px; margin-bottom:16px; display:none; align-items:center; justify-content:space-between; gap:10px; }
+    .already-in .name { font-weight:700; color:var(--cyan); }
+    .already-in .actions { display:flex; gap:8px; }
   </style>
 </head>
 <body>
@@ -25,7 +31,20 @@
     <div class="word-sub">Tournament Platform</div>
     <div class="glow-line"></div>
   </div>
-  <div class="login-card">
+
+  <!-- Show this if already logged in -->
+  <div class="already-in" id="alreadyIn">
+    <div>
+      <div style="font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:2px">Logged in as</div>
+      <div class="name" id="loggedInName"></div>
+    </div>
+    <div class="actions">
+      <a href="dashboard.html" class="btn btn-cyan btn-sm">Go to Portal →</a>
+      <button class="btn btn-ghost btn-sm" onclick="logoutNow()">Sign Out</button>
+    </div>
+  </div>
+
+  <div class="login-card" id="loginCard">
     <h2>PLAYER LOGIN</h2>
     <p>Enter your username and WhatsApp. New players are registered automatically.</p>
     <div id="msgArea"></div>
@@ -40,9 +59,29 @@
     <button class="btn btn-cyan btn-lg" id="loginBtn" style="width:100%" onclick="login()">Enter Portal →</button>
     <div class="new-note">First time? Just pick a username + your WhatsApp to get started.</div>
   </div>
+
+  <div class="admin-link">
+    <a href="admin.html">⚡ Admin Panel</a>
+  </div>
 </div>
 <script>
-  if (localStorage.getItem('sg_player')) window.location.href = 'dashboard.html';
+  // If already logged in, show the "already in" bar instead of auto-redirecting
+  const saved = localStorage.getItem('sg_player');
+  if (saved) {
+    const p = JSON.parse(saved);
+    document.getElementById('alreadyIn').style.display = 'flex';
+    document.getElementById('loggedInName').textContent = p.username;
+    document.getElementById('loginCard').style.opacity = '0.45';
+    document.getElementById('loginCard').style.pointerEvents = 'none';
+  }
+
+  function logoutNow() {
+    localStorage.removeItem('sg_player');
+    document.getElementById('alreadyIn').style.display = 'none';
+    document.getElementById('loginCard').style.opacity = '1';
+    document.getElementById('loginCard').style.pointerEvents = '';
+  }
+
   document.addEventListener('keydown', e => { if(e.key==='Enter') login(); });
 
   async function login() {

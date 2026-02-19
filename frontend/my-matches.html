@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Matches — Serious Gamers</title>
+  <link rel="stylesheet" href="portal.css">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    .result-badge { display:inline-block; width:28px; height:28px; border-radius:50%; font-size:0.7rem; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .result-W { background:rgba(0,224,122,0.15); color:var(--green); border:1px solid rgba(0,224,122,0.3); }
+    .result-L { background:rgba(255,59,92,0.15); color:var(--red); border:1px solid rgba(255,59,92,0.3); }
+    .result-D { background:rgba(255,208,96,0.15); color:var(--gold); border:1px solid rgba(255,208,96,0.3); }
+    .result-P { background:rgba(0,200,255,0.1); color:var(--cyan); border:1px solid rgba(0,200,255,0.2); }
+    .match-entry { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:10px; }
+    .match-entry.upcoming { border-left:3px solid var(--cyan); }
+    .match-entry.win  { border-left:3px solid var(--green); }
+    .match-entry.loss { border-left:3px solid var(--red); }
+    .match-entry.draw { border-left:3px solid var(--gold); }
+    .contact-box { background:var(--surface2); border:1px solid rgba(0,224,122,0.2); border-radius:8px; padding:12px 16px; margin-top:12px; }
+    .contact-title { font-size:0.65rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim); margin-bottom:6px; }
+    .contact-row { display:flex; align-items:center; gap:8px; margin-bottom:4px; font-size:0.85rem; }
+  </style>
+</head>
+<body>
+<div class="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" id="hamburgerBtn">☰</button>
+      <span class="topbar-title">MY MATCHES</span>
+    </div>
+    <div class="topbar-right">
+      <div class="chip chip-dim" style="cursor:pointer" onclick="setFilter('upcoming')" id="fUpcoming">Upcoming</div>
+      <div class="chip chip-dim" style="cursor:pointer" onclick="setFilter('all')" id="fAll">All</div>
+      <div class="chip chip-dim" style="cursor:pointer" onclick="setFilter('done')" id="fDone">Completed</div>
+    </div>
+  </div>
+  <div class="page-content">
+    <div id="statsRow" class="grid-4" style="margin-bottom:24px"></div>
+    <div id="msgArea"></div>
+    <div id="matchList"></div>
+  </div>
+</div>
+
+<script type="module">
+import { buildNav, getPlayer } from './nav.js';
+const player = buildNav('my-matches');
+
+let allMatches = [];
+let filter = 'upcoming';
+
+async function load() {
+  const res = await fetch(`/api/players/${player.id}/matches`);
+  allMatches = await res.json();
+
+  const wins   = allMatches.filter(m => m.result === 'W').length;
+  const losses = allMatches.filter(m => m.result === 'L').length;
+  const draws  = allMatches.filter(m => m.result === 'D').length;
+  const played = allMatches.filter(m => m.confirmed).length;
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-box"><div class="stat-label">Played</div><div class="stat-value">${played}</div></div>
+    <div class="stat-box"><div class="stat-label">Wins</div><div class="stat-value" style="color:var(--green)">${wins}</div></div>
+    <div class="stat-box"><div class="stat-label">Losses</div><div class="stat-value" style="color:var(--red)">${losses}</div></div>
+    <div class="stat-box"><div class="stat-label">Draws</div><div class="stat-value" style="color:var(--gold)">${draws}</div></div>
+  `;
+
+  setFilter(filter);
+}
+
+window.setFilter = function(f) {
+  filter = f;
+  document.querySelectorAll('[id^="f"]').forEach(el => el.className = 'chip chip-dim');
+  const map = {upcoming:'fUpcoming', all:'fAll', done:'fDone'};
+  if(map[f]) document.getElementById(map[f]).className = 'chip chip-cyan';
+  render();
+};
+
+function render() {
+  let list = allMatches;
+  if (filter === 'upcoming') list = allMatches.filter(m => !m.confirmed);
+  if (filter === 'done') list = allMatches.filter(m => m.confirmed);
+
+  const el = document.getElementById('matchList');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">⚽</div><div class="empty-title">NO MATCHES FOUND</div><div class="empty-sub">${filter==='upcoming'?'You have no upcoming matches. Register for a tournament!':'No completed matches yet.'}</div></div>`;
+    return;
+  }
+
+  el.innerHTML = list.map(m => {
+    const result = m.result || 'P'; // P = Pending
+    const cssClass = { W:'win', L:'loss', D:'draw', P:'upcoming' }[result] || 'upcoming';
+    const resultLabel = { W:'WIN', L:'LOSS', D:'DRAW', P:'•••' }[result];
+    const resultBadgeClass = { W:'result-W', L:'result-L', D:'result-D', P:'result-P' }[result];
+
+    const hasScore = m.my_score !== null && m.opp_score !== null;
+    const scoreDisplay = hasScore
+      ? `<span style="font-family:'Bebas Neue',cursive;font-size:1.6rem;letter-spacing:3px;color:var(--gold)">${m.my_score} – ${m.opp_score}</span>`
+      : `<span style="color:var(--text-dim);font-size:0.82rem">Not played yet</span>`;
+
+    // Contact box — only for upcoming matches with an opponent
+    const contactBox = (!m.confirmed && m.opp_username && m.opp_whatsapp) ? `
+      <div class="contact-box">
+        <div class="contact-title">📋 Opponent Contact Details</div>
+        <div class="contact-row">
+          <span style="color:var(--text-dim)">Username:</span>
+          <strong>${m.opp_username}</strong>
+        </div>
+        <div class="contact-row">
+          <span style="color:var(--text-dim)">WhatsApp:</span>
+          <a href="https://wa.me/${m.opp_whatsapp?.replace(/\D/g,'')}" target="_blank" style="color:var(--green);font-weight:700;text-decoration:none">
+            📱 ${m.opp_whatsapp} — Message on WhatsApp
+          </a>
+        </div>
+      </div>` : '';
+
+    return `
+      <div class="match-entry ${cssClass}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+          <div>
+            <div style="font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:3px">${m.tournament_name || 'Tournament'} · ${m.stage?.replace(/-/g,' ')?.replace(/\b\w/g,l=>l.toUpperCase()) || 'Group Stage'}${m.group_name?' · Group '+m.group_name:''}</div>
+            <div style="font-size:1rem;font-weight:700">${m.my_team} <span style="color:var(--text-dim);font-weight:400">vs</span> ${m.opp_team || 'TBD'}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${scoreDisplay}
+            <div class="result-badge ${resultBadgeClass}">${resultLabel}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;font-size:0.8rem;color:var(--text-dim)">
+          <span>You: <strong style="color:var(--text)">${player.username}</strong></span>
+          <span>Opponent: <strong style="color:var(--text)">${m.opp_username || 'TBD'}</strong></span>
+          ${m.confirmed ? '<span class="chip chip-green" style="font-size:0.6rem">✓ Confirmed</span>' : '<span class="chip chip-dim" style="font-size:0.6rem">Pending</span>'}
+        </div>
+        ${contactBox}
+      </div>`;
+  }).join('');
+}
+
+setFilter('upcoming');
+load();
+</script>
+</body>
+</html>

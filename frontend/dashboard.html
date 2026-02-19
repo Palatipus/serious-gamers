@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard — Serious Gamers</title>
+  <link rel="stylesheet" href="portal.css">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body>
+<div class="main" id="mainWrap">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" id="hamburgerBtn">☰</button>
+      <span class="topbar-title">DASHBOARD</span>
+    </div>
+    <div class="topbar-right">
+      <span id="topbarGreet" style="font-size:0.82rem;color:var(--text-dim)"></span>
+    </div>
+  </div>
+  <div class="page-content">
+    <div id="statsRow" class="grid-4" style="margin-bottom:28px"></div>
+    <div class="grid-2" style="gap:24px">
+      <div>
+        <div class="section-header"><div class="section-title">ACTIVE TOURNAMENTS</div></div>
+        <div id="activeTournaments"></div>
+      </div>
+      <div>
+        <div class="section-header"><div class="section-title">MY NEXT MATCH</div></div>
+        <div id="nextMatch"></div>
+      </div>
+    </div>
+    <div style="margin-top:28px">
+      <div class="section-header"><div class="section-title">RECENT RESULTS</div></div>
+      <div id="recentResults"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { buildNav, getPlayer } from './nav.js';
+
+const player = buildNav('dashboard');
+document.getElementById('topbarGreet').textContent = `Hi, ${player.username}`;
+
+async function load() {
+  const [tournamentsRes, matchesRes] = await Promise.all([
+    fetch('/api/tournaments'),
+    fetch(`/api/players/${player.id}/matches`)
+  ]);
+  const tournaments = await tournamentsRes.json();
+  const matches = await matchesRes.json();
+
+  // Stats
+  const myRegs = tournaments.filter(t => t.registered_count > 0); // simplified
+  const wins = matches.filter(m => m.result === 'W').length;
+  const losses = matches.filter(m => m.result === 'L').length;
+  const draws = matches.filter(m => m.result === 'D').length;
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-box"><div class="stat-label">Matches Played</div><div class="stat-value">${matches.filter(m=>m.confirmed).length}</div></div>
+    <div class="stat-box"><div class="stat-label">Wins</div><div class="stat-value" style="color:var(--green)">${wins}</div></div>
+    <div class="stat-box"><div class="stat-label">Losses</div><div class="stat-value" style="color:var(--red)">${losses}</div></div>
+    <div class="stat-box"><div class="stat-label">Draws</div><div class="stat-value" style="color:var(--gold)">${draws}</div></div>
+  `;
+
+  // Active tournaments
+  const active = tournaments.filter(t => t.status !== 'completed');
+  const atEl = document.getElementById('activeTournaments');
+  if (!active.length) {
+    atEl.innerHTML = '<div class="empty"><div class="empty-icon">🏆</div><div class="empty-title">No Active Tournaments</div><div class="empty-sub">Check back soon!</div></div>';
+  } else {
+    atEl.innerHTML = active.slice(0, 4).map(t => {
+      const pct = Math.round((t.registered_count / t.max_players) * 100);
+      const statusChip = {
+        registration: '<span class="chip chip-green">● Open</span>',
+        group_stage:  '<span class="chip chip-cyan">● Groups</span>',
+        knockout:     '<span class="chip chip-gold">● Knockout</span>',
+      }[t.status] || '';
+      return `
+        <div class="tournament-card status-${t.status}" style="margin-bottom:10px" onclick="location.href='tournament.html?id=${t.id}'">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <div class="t-name">${t.name}</div>
+            ${statusChip}
+          </div>
+          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+          <div style="font-size:0.72rem;color:var(--text-dim);margin-top:4px">${t.registered_count}/${t.max_players} players</div>
+        </div>`;
+    }).join('');
+  }
+
+  // Next match
+  const upcoming = matches.filter(m => !m.confirmed && m.opp_username);
+  const nmEl = document.getElementById('nextMatch');
+  if (!upcoming.length) {
+    nmEl.innerHTML = '<div class="card-sm" style="color:var(--text-dim);font-size:0.85rem;text-align:center;padding:30px">No upcoming matches scheduled.</div>';
+  } else {
+    const m = upcoming[0];
+    nmEl.innerHTML = `
+      <div class="opp-card upcoming">
+        <div class="opp-header">
+          <div class="opp-title">${m.tournament_name}</div>
+          <span class="chip chip-cyan">${m.stage?.replace('-',' ').toUpperCase() || 'GROUP'}</span>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:1.1rem;font-weight:700">${m.my_team} <span style="color:var(--text-dim);font-weight:400;font-size:0.9rem">vs</span> ${m.opp_team}</div>
+          <div style="font-size:0.82rem;color:var(--text-dim);margin-top:3px">You vs <strong style="color:var(--text)">${m.opp_username}</strong></div>
+        </div>
+        <a class="opp-whatsapp" href="https://wa.me/${m.opp_whatsapp?.replace(/\D/g,'')}" target="_blank">
+          📱 Contact on WhatsApp: ${m.opp_whatsapp}
+        </a>
+      </div>`;
+  }
+
+  // Recent results
+  const done = matches.filter(m => m.confirmed).reverse().slice(0, 5);
+  const rrEl = document.getElementById('recentResults');
+  if (!done.length) {
+    rrEl.innerHTML = '<div class="card-sm" style="color:var(--text-dim);font-size:0.85rem;text-align:center;padding:24px">No results yet.</div>';
+  } else {
+    rrEl.innerHTML = done.map(m => {
+      const color = { W: 'var(--green)', L: 'var(--red)', D: 'var(--gold)' }[m.result] || 'var(--text-dim)';
+      const label = { W: 'WIN', L: 'LOSS', D: 'DRAW' }[m.result] || '';
+      return `
+        <div class="opp-card ${m.result==='W'?'win':m.result==='L'?'loss':'draw'}" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px">
+          <div>
+            <div style="font-size:0.8rem;font-weight:700">${m.my_team}</div>
+            <div style="font-size:0.72rem;color:var(--text-dim)">${player.username}</div>
+          </div>
+          <div style="text-align:center">
+            <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;color:${color};letter-spacing:2px">${m.my_score} – ${m.opp_score}</div>
+            <div style="font-size:0.62rem;color:${color};font-weight:700">${label}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:0.8rem;font-weight:700">${m.opp_team}</div>
+            <div style="font-size:0.72rem;color:var(--text-dim)">${m.opp_username}</div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+}
+
+load();
+</script>
+</body>
+</html>

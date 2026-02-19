@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tournament — Serious Gamers</title>
+  <link rel="stylesheet" href="portal.css">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    .tab-bar { display:flex; gap:4px; margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:0; }
+    .tab { padding:10px 20px; font-size:0.85rem; font-weight:600; color:var(--text-dim); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all 0.15s; }
+    .tab:hover { color:var(--text); }
+    .tab.active { color:var(--cyan); border-bottom-color:var(--cyan); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .groups-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+  </style>
+</head>
+<body>
+<div class="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" id="hamburgerBtn">☰</button>
+      <button class="btn btn-ghost btn-sm" onclick="history.back()">← Back</button>
+      <span class="topbar-title" id="topbarTitle">TOURNAMENT</span>
+    </div>
+    <div class="topbar-right" id="topbarRight"></div>
+  </div>
+
+  <div class="page-content">
+    <div id="tournamentHeader" style="margin-bottom:24px"></div>
+
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab('players')">Players</div>
+      <div class="tab" onclick="switchTab('groups')">Groups</div>
+      <div class="tab" onclick="switchTab('fixtures')">Fixtures</div>
+      <div class="tab" onclick="switchTab('bracket')">Bracket</div>
+    </div>
+
+    <div id="msgArea"></div>
+
+    <div id="tab-players" class="tab-panel active"></div>
+    <div id="tab-groups" class="tab-panel"></div>
+    <div id="tab-fixtures" class="tab-panel"></div>
+    <div id="tab-bracket" class="tab-panel"></div>
+  </div>
+</div>
+
+<script type="module">
+import { buildNav, getPlayer } from './nav.js';
+const player = buildNav('tournaments');
+const params = new URLSearchParams(location.search);
+const tid = params.get('id');
+if (!tid) { location.href = 'tournaments.html'; }
+
+let tournament, groups, matches, myRegId;
+
+window.switchTab = function(tab) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelector(`.tab:nth-child(${['players','groups','fixtures','bracket'].indexOf(tab)+1})`).classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+};
+
+async function load() {
+  const [tRes, gRes, mRes] = await Promise.all([
+    fetch(`/api/tournaments/${tid}`),
+    fetch(`/api/tournaments/${tid}/groups`),
+    fetch(`/api/tournaments/${tid}/matches`),
+  ]);
+  tournament = await tRes.json();
+  groups = await gRes.json();
+  matches = await mRes.json();
+
+  // Find my registration
+  const myReg = tournament.registrations?.find(r => r.player_id == player.id);
+  myRegId = myReg?.id;
+
+  document.getElementById('topbarTitle').textContent = tournament.name?.toUpperCase();
+
+  // Header
+  const statusMap = {
+    registration: { chip: 'chip-green', label: '● Registration Open' },
+    group_stage:  { chip: 'chip-cyan',  label: '● Group Stage' },
+    knockout:     { chip: 'chip-gold',  label: '● Knockout Stage' },
+    completed:    { chip: 'chip-dim',   label: '✓ Completed' },
+  };
+  const s = statusMap[tournament.status] || statusMap.completed;
+  const pct = Math.round((tournament.registered_count / tournament.max_players)*100);
+
+  document.getElementById('tournamentHeader').innerHTML = `
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">
+      <div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:1.8rem;letter-spacing:3px;margin-bottom:6px">${tournament.name}</div>
+        ${tournament.description ? `<div style="color:var(--text-dim);font-size:0.85rem;margin-bottom:10px">${tournament.description}</div>` : ''}
+        <div style="display:flex;gap:12px;align-items:center">
+          <span class="chip ${s.chip}">${s.label}</span>
+          <span style="font-size:0.78rem;color:var(--text-dim)">${tournament.max_players}-player bracket</span>
+          ${myRegId ? '<span class="chip chip-cyan">✓ You\'re Registered</span>' : ''}
+        </div>
+      </div>
+      <div style="min-width:160px">
+        <div style="font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">REGISTRATIONS</div>
+        <div class="progress-bar" style="height:8px"><div class="progress-fill" style="width:${pct}%"></div></div>
+        <div style="font-size:0.78rem;color:var(--text-dim);margin-top:5px">${tournament.registered_count} / ${tournament.max_players}</div>
+      </div>
+    </div>`;
+
+  renderPlayers();
+  renderGroups();
+  renderFixtures();
+  renderBracket();
+}
+
+function renderPlayers() {
+  const el = document.getElementById('tab-players');
+  const regs = tournament.registrations || [];
+  if (!regs.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">NO PLAYERS YET</div></div>'; return; }
+  el.innerHTML = `
+    <div class="card">
+      <table class="tbl">
+        <thead><tr>
+          <th>#</th><th>Player</th><th>Team</th><th>Joined</th>
+        </tr></thead>
+        <tbody>
+          ${regs.map((r,i) => `
+            <tr>
+              <td class="center" style="color:var(--text-dim)">${i+1}</td>
+              <td class="bold">${r.username} ${r.player_id==player.id?'<span class="chip chip-cyan" style="font-size:0.6rem">You</span>':''}</td>
+              <td>${r.team_name}</td>
+              <td style="color:var(--text-dim);font-size:0.78rem">${new Date(r.created_at).toLocaleDateString()}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function renderGroups() {
+  const el = document.getElementById('tab-groups');
+  if (!groups.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">GROUPS NOT DRAWN YET</div><div class="empty-sub">The admin will generate groups when registration closes.</div></div>'; return; }
+  const byGroup = {};
+  groups.forEach(g => { if(!byGroup[g.group_name]) byGroup[g.group_name]=[]; byGroup[g.group_name].push(g); });
+  Object.keys(byGroup).forEach(gn => byGroup[gn].sort((a,b)=>b.points-a.points||b.gf-a.gf||(a.ga-b.ga)));
+
+  el.innerHTML = `<div class="groups-grid">` + Object.keys(byGroup).sort().map(gn => {
+    const teams = byGroup[gn];
+    return `
+      <div class="card">
+        <div class="group-header"><div class="group-letter">${gn}</div><div class="group-divider"></div></div>
+        <table class="tbl">
+          <thead><tr><th>#</th><th>Player</th><th class="center">P</th><th class="center">W</th><th class="center">D</th><th class="center">L</th><th class="center">GD</th><th class="center">PTS</th></tr></thead>
+          <tbody>
+            ${teams.map((t,i) => `
+              <tr>
+                <td class="center ${i<2?'pos-q':''}">${i+1}</td>
+                <td class="bold">${t.username || '?'} ${t.team_id && groups.find(g=>g.team_id==player.id||g.registration_id==myRegId)?'':''}</td>
+                <td class="center">${t.played}</td>
+                <td class="center">${t.won}</td>
+                <td class="center">${t.drawn}</td>
+                <td class="center">${t.lost}</td>
+                <td class="center" style="color:${t.gf-t.ga>0?'var(--green)':t.gf-t.ga<0?'var(--red)':'inherit'}">${t.gf-t.ga>0?'+':''}${t.gf-t.ga}</td>
+                <td class="pts">${t.points}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }).join('') + `</div>`;
+}
+
+function renderFixtures() {
+  const el = document.getElementById('tab-fixtures');
+  if (!matches.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">⚽</div><div class="empty-title">NO FIXTURES YET</div></div>'; return; }
+
+  const byGroup = {};
+  matches.forEach(m => {
+    const key = m.group_name ? `group_${m.group_name}` : m.stage;
+    if(!byGroup[key]) byGroup[key] = {title: m.group_name ? `Group ${m.group_name}` : m.stage?.replace(/-/g,' ').replace(/\b\w/g,l=>l.toUpperCase()), matches:[]};
+    byGroup[key].matches.push(m);
+  });
+
+  const stageOrder = ['group','quarter-final','semi-final','final'];
+  const sortedKeys = Object.keys(byGroup).sort((a,b) => {
+    const as = byGroup[a].matches[0].stage, bs = byGroup[b].matches[0].stage;
+    return stageOrder.indexOf(as) - stageOrder.indexOf(bs) || a.localeCompare(b);
+  });
+
+  el.innerHTML = sortedKeys.map(key => {
+    const sec = byGroup[key];
+    return `
+      <div style="margin-bottom:24px">
+        <div style="font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:12px">${sec.title}</div>
+        ${sec.matches.map(m => matchCard(m)).join('')}
+      </div>`;
+  }).join('');
+
+  document.querySelectorAll('.save-btn').forEach(btn => {
+    btn.addEventListener('click', () => saveScore(btn.dataset.id));
+  });
+}
+
+function matchCard(m) {
+  const isMyMatch = m.home_reg_id == myRegId || m.away_reg_id == myRegId;
+  const confirmed = m.confirmed;
+  const scoreArea = confirmed
+    ? `<div style="text-align:center">
+         <div class="match-score">${m.home_score} – ${m.away_score}</div>
+         <span class="chip chip-green" style="font-size:0.6rem">✓ Confirmed</span>
+       </div>`
+    : `<div style="text-align:center">
+         <div class="score-inputs">
+           <input class="score-box" type="number" min="0" max="99" id="hs_${m.id}" value="${m.home_score??''}" placeholder="-" ${confirmed?'disabled':''}>
+           <span style="color:var(--text-dim);font-size:0.7rem;letter-spacing:1px">VS</span>
+           <input class="score-box" type="number" min="0" max="99" id="as_${m.id}" value="${m.away_score??''}" placeholder="-" ${confirmed?'disabled':''}>
+         </div>
+         <button class="btn btn-cyan btn-sm save-btn" data-id="${m.id}" style="margin-top:6px;font-size:0.72rem;padding:4px 12px">Save</button>
+         ${m.home_score!==null&&m.away_score!==null?'<div style="font-size:0.62rem;color:var(--text-dim);margin-top:3px">Pending confirm</div>':''}
+       </div>`;
+
+  return `
+    <div class="match-card ${confirmed?'confirmed':''}" style="${isMyMatch?'border-color:rgba(0,200,255,0.3);':''}">
+      <div class="match-side">
+        <div class="match-team">${m.home_team_name}</div>
+        <div class="match-player">${m.home_player}</div>
+      </div>
+      ${scoreArea}
+      <div class="match-side right">
+        <div class="match-team">${m.away_team_name}</div>
+        <div class="match-player">${m.away_player}</div>
+      </div>
+    </div>`;
+}
+
+async function saveScore(id) {
+  const hs = document.getElementById(`hs_${id}`)?.value;
+  const as = document.getElementById(`as_${id}`)?.value;
+  const msg = document.getElementById('msgArea');
+  if (hs===''||as==='') { msg.innerHTML='<div class="alert alert-error">Enter both scores.</div>'; return; }
+  try {
+    const res = await fetch(`/api/tournaments/${tid}/matches/${id}/score`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({home_score:parseInt(hs), away_score:parseInt(as)})
+    });
+    const data = await res.json();
+    if(!res.ok) throw new Error(data.message);
+    msg.innerHTML = '<div class="alert alert-success">Score saved!</div>';
+    setTimeout(()=>{ msg.innerHTML=''; load(); }, 1500);
+  } catch(err) {
+    msg.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+}
+
+function renderBracket() {
+  const el = document.getElementById('tab-bracket');
+  const knockout = matches.filter(m => m.stage !== 'group');
+  if (!knockout.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🏆</div><div class="empty-title">BRACKET NOT STARTED</div><div class="empty-sub">Complete the group stage first.</div></div>'; return; }
+
+  const rounds = ['round-of-16','quarter-final','semi-final','final'];
+  const present = rounds.filter(r => knockout.some(m => m.stage === r));
+
+  el.innerHTML = `<div class="bracket-wrap">` + present.map(stage => {
+    const ms = knockout.filter(m => m.stage === stage).sort((a,b) => (a.match_order||0)-(b.match_order||0));
+    return `
+      <div class="bracket-round">
+        <div class="round-label">${stage.replace(/-/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</div>
+        <div class="bracket-slots">
+          ${ms.map(m => {
+            const hw = m.confirmed && m.home_score > m.away_score;
+            const aw = m.confirmed && m.away_score > m.home_score;
+            if (!m.home_team_id && !m.away_team_id) return `<div class="bracket-match-wrap"><div class="bracket-tile"><div class="bracket-row" style="color:var(--text-dim);font-style:italic">TBD</div><div class="bracket-row" style="color:var(--text-dim);font-style:italic">TBD</div></div></div>`;
+            return `
+              <div class="bracket-match-wrap">
+                <div class="bracket-tile ${stage==='final'?'gold-border':''}">
+                  <div class="bracket-row ${hw?'winner':''}">
+                    <span class="bracket-name">${m.home_player||m.home_team_name}</span>
+                    <span class="bracket-sc">${m.home_score!==null?m.home_score:'-'}</span>
+                  </div>
+                  <div class="bracket-row ${aw?'winner':''}">
+                    <span class="bracket-name">${m.away_player||m.away_team_name}</span>
+                    <span class="bracket-sc">${m.away_score!==null?m.away_score:'-'}</span>
+                  </div>
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('') + `</div>`;
+
+  // Champion display
+  const final = knockout.find(m => m.stage === 'final' && m.confirmed);
+  if (final) {
+    const champ = final.home_score > final.away_score ? final.home_player : final.away_player;
+    el.innerHTML += `<div style="text-align:center;padding:30px 20px"><div style="font-size:3rem;margin-bottom:10px">🏆</div><div style="font-family:'Bebas Neue',cursive;font-size:2rem;letter-spacing:4px;color:var(--gold);text-shadow:0 0 20px rgba(255,208,96,0.5)">${champ}</div><div style="font-size:0.7rem;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-top:4px">Champion</div></div>`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>

@@ -3,7 +3,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import registerRoutes from "./routes/register.js";
+import playerRoutes from "./routes/players.js";
+import tournamentRoutes from "./routes/tournaments.js";
 import groupRoutes from "./routes/groups.js";
 import matchRoutes from "./routes/matches.js";
 
@@ -16,15 +17,12 @@ app.use(express.json());
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Serve frontend
 app.use(express.static(path.join(__dirname, "frontend")));
-
-// API routes
-app.use("/api", registerRoutes);
+app.use("/api", playerRoutes);
+app.use("/api", tournamentRoutes);
 app.use("/api", groupRoutes);
 app.use("/api", matchRoutes);
 
-// Catch-all route
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "frontend", "index.html"));
 });

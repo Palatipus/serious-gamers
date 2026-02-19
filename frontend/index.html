@@ -2,108 +2,71 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Serious Gamers Tournament</title>
-  <link rel="stylesheet" href="tournament.css">
-  <link rel="stylesheet" href="style.css">
+  <title>Serious Gamers — Portal</title>
+  <link rel="stylesheet" href="portal.css">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    /* Override style.css body for nav compat */
-    body { align-items: center; }
-
-    .main-content {
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding-bottom: 60px;
-    }
-
-    .reg-header {
-      text-align: center;
-      padding: 30px 20px 10px;
-    }
-
-    .reg-header h1 {
-      font-family: 'Orbitron', sans-serif;
-      font-size: 2.8rem;
-      font-weight: 900;
-      letter-spacing: 3px;
-      color: #fff;
-      text-shadow: 0 0 30px rgba(0,191,255,0.6);
-      margin: 0;
-    }
-
-    .reg-header p {
-      color: rgba(232,244,255,0.6);
-      font-size: 1rem;
-      margin-top: 6px;
-    }
+    body { display:flex; align-items:center; justify-content:center; min-height:100vh; padding:20px; }
+    .login-wrap { width:100%; max-width:400px; }
+    .login-logo { text-align:center; margin-bottom:36px; }
+    .wordmark { font-family:var(--font-head); font-size:3.5rem; letter-spacing:6px; color:var(--cyan); text-shadow:0 0 40px rgba(0,200,255,0.5); line-height:1; }
+    .word-sub { font-size:0.7rem; letter-spacing:3px; text-transform:uppercase; color:var(--text-dim); margin-top:8px; }
+    .glow-line { width:60px; height:2px; background:var(--cyan); margin:16px auto 0; box-shadow:0 0 12px var(--cyan); }
+    .login-card { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:32px; }
+    .login-card h2 { font-family:var(--font-head); font-size:1.3rem; letter-spacing:2px; margin-bottom:6px; }
+    .login-card p { font-size:0.82rem; color:var(--text-dim); margin-bottom:24px; }
+    .new-note { text-align:center; font-size:0.78rem; color:var(--text-dim); margin-top:14px; }
   </style>
 </head>
 <body>
-
-<nav>
-  <div class="nav-inner">
-    <a href="index.html" class="nav-logo">⚽ SERIOUS GAMERS</a>
-    <div class="nav-links">
-      <a href="index.html" class="active">Register</a>
-      <a href="groups.html">Groups</a>
-      <a href="fixtures.html">Fixtures</a>
-      <a href="bracket.html">Bracket</a>
-      <a href="admin.html">Admin</a>
-    </div>
+<div class="login-wrap">
+  <div class="login-logo">
+    <div class="wordmark">SERIOUS<br>GAMERS</div>
+    <div class="word-sub">Tournament Platform</div>
+    <div class="glow-line"></div>
   </div>
-</nav>
-
-<div class="main-content">
-  <div class="reg-header">
-    <h1>SERIOUS GAMERS</h1>
-    <p>Website designed by Casper</p>
-  </div>
-
-  <main>
-    <div class="card">
-      <h2>Register for Tournament</h2>
-      <form id="registerForm">
-        <label>Username</label>
-        <input type="text" id="username" required>
-
-        <label>WhatsApp Number</label>
-        <input type="text" id="whatsapp" required>
-
-        <label>Select Team</label>
-        <select id="team" required>
-          <option value="">-- Select Team --</option>
-        </select>
-
-        <button type="submit">Register</button>
-      </form>
-      <div class="full-message" id="fullMessage" style="display:none;">
-        Slots are filled up! Registration closed.
-      </div>
+  <div class="login-card">
+    <h2>PLAYER LOGIN</h2>
+    <p>Enter your username and WhatsApp. New players are registered automatically.</p>
+    <div id="msgArea"></div>
+    <div class="form-row">
+      <label class="form-label">Username</label>
+      <input type="text" id="username" class="form-input" placeholder="e.g. CasperGG" autocomplete="off">
     </div>
-
-    <h2 class="mtable-header">Registered Players</h2>
-    <table id="playersTable">
-      <thead>
-        <tr class="table-header">
-          <th>#</th>
-          <th>Username</th>
-          <th>WhatsApp</th>
-          <th>Team</th>
-        </tr>
-      </thead>
-      <tbody class="table-body">
-        <!-- Player rows will be added here dynamically -->
-      </tbody>
-    </table>
-  </main>
-
-  <footer>
-    <p>Contact: <em>casperagyengo12@gmail.com</em></p>
-  </footer>
+    <div class="form-row">
+      <label class="form-label">WhatsApp Number</label>
+      <input type="tel" id="whatsapp" class="form-input" placeholder="e.g. 0501234567">
+    </div>
+    <button class="btn btn-cyan btn-lg" id="loginBtn" style="width:100%" onclick="login()">Enter Portal →</button>
+    <div class="new-note">First time? Just pick a username + your WhatsApp to get started.</div>
+  </div>
 </div>
+<script>
+  if (localStorage.getItem('sg_player')) window.location.href = 'dashboard.html';
+  document.addEventListener('keydown', e => { if(e.key==='Enter') login(); });
 
-<script type="module" src="script.js"></script>
+  async function login() {
+    const username = document.getElementById('username').value.trim();
+    const whatsapp = document.getElementById('whatsapp').value.trim();
+    const msg = document.getElementById('msgArea');
+    if (!username || !whatsapp) { msg.innerHTML='<div class="alert alert-error">Fill in both fields.</div>'; return; }
+    const btn = document.getElementById('loginBtn');
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>&nbsp;Signing in...';
+    try {
+      const res = await fetch('/api/players/login', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username, whatsapp})
+      });
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.message || 'Login failed');
+      localStorage.setItem('sg_player', JSON.stringify(data.player));
+      msg.innerHTML = `<div class="alert alert-success">${data.created?'Account created! Welcome!':'Welcome back, '+data.player.username+'!'}</div>`;
+      setTimeout(()=>window.location.href='dashboard.html', 700);
+    } catch(err) {
+      msg.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+      btn.disabled=false; btn.innerHTML='Enter Portal →';
+    }
+  }
+</script>
 </body>
 </html>

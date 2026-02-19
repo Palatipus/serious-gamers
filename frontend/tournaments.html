@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tournaments — Serious Gamers</title>
+  <link rel="stylesheet" href="portal.css">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body>
+<div class="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" id="hamburgerBtn">☰</button>
+      <span class="topbar-title">TOURNAMENTS</span>
+    </div>
+    <div class="topbar-right">
+      <div class="chip chip-dim" id="filterActive" style="cursor:pointer" onclick="setFilter('active')">Active</div>
+      <div class="chip chip-dim" id="filterAll"    style="cursor:pointer" onclick="setFilter('all')">All</div>
+      <div class="chip chip-dim" id="filterDone"   style="cursor:pointer" onclick="setFilter('completed')">Past</div>
+    </div>
+  </div>
+  <div class="page-content">
+    <div id="msgArea"></div>
+    <div id="tournamentList"></div>
+  </div>
+</div>
+
+<!-- Register Modal -->
+<div class="modal-backdrop" id="regModal">
+  <div class="modal">
+    <div class="modal-title">REGISTER FOR TOURNAMENT</div>
+    <div id="regModalInfo" style="font-size:0.85rem;color:var(--text-dim);margin-bottom:16px"></div>
+    <div id="regMsgArea"></div>
+    <div class="form-row">
+      <label class="form-label">Choose Your Team</label>
+      <select id="teamSelect" class="form-select"><option value="">Loading teams...</option></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-cyan" onclick="submitRegister()">Register →</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { buildNav, getPlayer } from './nav.js';
+const player = buildNav('tournaments');
+
+let allTournaments = [];
+let currentFilter = 'active';
+let selectedTournamentId = null;
+
+setFilter('active');
+
+async function load() {
+  const res = await fetch('/api/tournaments');
+  allTournaments = await res.json();
+  render();
+}
+
+window.setFilter = function(f) {
+  currentFilter = f;
+  ['Active','All','Done'].forEach(x => {
+    const el = document.getElementById('filter'+x);
+    if(el) el.className = 'chip chip-dim';
+  });
+  const map = {active:'Active',all:'All',completed:'Done'};
+  const el = document.getElementById('filter'+(map[f]||'All'));
+  if(el) el.className = 'chip chip-cyan';
+  render();
+};
+
+function render() {
+  let list = allTournaments;
+  if (currentFilter === 'active') list = allTournaments.filter(t => t.status !== 'completed');
+  if (currentFilter === 'completed') list = allTournaments.filter(t => t.status === 'completed');
+
+  const el = document.getElementById('tournamentList');
+  if (!list.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🏆</div><div class="empty-title">NO TOURNAMENTS</div><div class="empty-sub">${currentFilter==='active'?'No active tournaments right now. Check back soon!':'No tournaments found.'}</div></div>`;
+    return;
+  }
+
+  el.innerHTML = list.map(t => {
+    const pct = Math.round((t.registered_count / t.max_players) * 100);
+    const isFull = t.registered_count >= t.max_players;
+
+    const statusMap = {
+      registration: { chip: 'chip-green', label: '● Registration Open' },
+      group_stage:  { chip: 'chip-cyan',  label: '● Group Stage' },
+      knockout:     { chip: 'chip-gold',  label: '● Knockout Stage' },
+      completed:    { chip: 'chip-dim',   label: '✓ Completed' },
+    };
+    const s = statusMap[t.status] || statusMap.completed;
+
+    let action = '';
+    if (t.status === 'registration' && !isFull) {
+      action = `<button class="btn btn-green btn-sm" onclick="openRegModal(${t.id}, '${t.name.replace(/'/g,"\\'")}', ${t.max_players})">Register →</button>`;
+    } else if (t.status === 'registration' && isFull) {
+      action = `<span class="chip chip-red">Full</span>`;
+    } else if (t.status !== 'completed') {
+      action = `<button class="btn btn-ghost btn-sm" onclick="location.href='tournament.html?id=${t.id}'">View →</button>`;
+    }
+
+    return `
+      <div class="tournament-card status-${t.status}" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div>
+            <div class="t-name" style="cursor:pointer" onclick="location.href='tournament.html?id=${t.id}'">${t.name}</div>
+            ${t.description ? `<div class="t-desc">${t.description}</div>` : ''}
+          </div>
+          <span class="chip ${s.chip}">${s.label}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:3px">${t.registered_count} / ${t.max_players} players</div>
+          </div>
+          <div style="font-size:0.78rem;color:var(--text-dim)">${t.max_players} player bracket</div>
+          ${action}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+window.openRegModal = async function(id, name, maxPlayers) {
+  selectedTournamentId = id;
+  document.getElementById('regModalInfo').textContent = `Registering for: ${name} (${maxPlayers}-player bracket)`;
+  document.getElementById('regMsgArea').innerHTML = '';
+  document.getElementById('teamSelect').innerHTML = '<option value="">Loading teams...</option>';
+  document.getElementById('regModal').classList.add('open');
+
+  const res = await fetch(`/api/tournaments/${id}/available-teams`);
+  const teams = await res.json();
+  const sel = document.getElementById('teamSelect');
+  if (!teams.length) {
+    sel.innerHTML = '<option value="">No teams available</option>';
+  } else {
+    sel.innerHTML = '<option value="">-- Pick Your Team --</option>' +
+      teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+  }
+};
+
+window.closeModal = function() {
+  document.getElementById('regModal').classList.remove('open');
+};
+
+window.submitRegister = async function() {
+  const team_id = parseInt(document.getElementById('teamSelect').value);
+  const msg = document.getElementById('regMsgArea');
+  if (!team_id) { msg.innerHTML = '<div class="alert alert-error">Pick a team first.</div>'; return; }
+
+  try {
+    const res = await fetch(`/api/tournaments/${selectedTournamentId}/register`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ player_id: player.id, team_id })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || 'Registration failed');
+    msg.innerHTML = '<div class="alert alert-success">Registered! 🎉</div>';
+    setTimeout(closeModal, 1200);
+    load();
+  } catch(err) {
+    msg.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+  }
+};
+
+document.getElementById('regModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+load();
+</script>
+</body>
+</html>

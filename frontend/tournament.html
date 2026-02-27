@@ -6,18 +6,69 @@
   <link rel="stylesheet" href="portal.css">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
-    .tab-bar { display:flex; gap:4px; margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:0; }
+    .tab-bar { display:flex; gap:4px; margin-bottom:24px; border-bottom:1px solid var(--border); }
     .tab { padding:10px 20px; font-size:0.85rem; font-weight:600; color:var(--text-dim); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all 0.15s; }
     .tab:hover { color:var(--text); }
     .tab.active { color:var(--cyan); border-bottom-color:var(--cyan); }
     .tab-panel { display:none; }
     .tab-panel.active { display:block; }
     .groups-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+
+    /* Matchday header */
+    .matchday-header {
+      display:flex; align-items:center; justify-content:space-between;
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:10px; padding:14px 20px; margin-bottom:18px; flex-wrap:wrap; gap:10px;
+    }
+    .matchday-title { font-family:'Bebas Neue',cursive; font-size:1.4rem; letter-spacing:3px; color:var(--cyan); }
+    .matchday-progress { font-size:0.78rem; color:var(--text-dim); }
+    .matchday-locked { display:flex; align-items:center; gap:8px; font-size:0.8rem; color:var(--text-dim); background:rgba(255,255,255,0.04); border:1px solid var(--border); border-radius:8px; padding:8px 14px; }
+
+    /* Match card */
+    .match-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:10px; transition:border-color 0.15s; }
+    .match-card.confirmed { border-color:rgba(0,224,122,0.25); }
+    .match-card.my-match  { border-color:rgba(0,200,255,0.3); }
+    .match-layout { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .match-side { flex:1; min-width:100px; }
+    .match-side.right { text-align:right; }
+    .match-team { font-size:0.72rem; color:var(--text-dim); margin-bottom:2px; }
+    .match-player { font-weight:700; font-size:0.95rem; }
+    .match-center { text-align:center; min-width:120px; }
+    .match-score { font-family:'Bebas Neue',cursive; font-size:1.8rem; letter-spacing:4px; color:var(--gold); line-height:1; }
+    .score-inputs { display:flex; align-items:center; gap:6px; justify-content:center; margin-bottom:6px; }
+    .score-box { width:44px; height:44px; text-align:center; font-size:1.2rem; font-weight:700; background:var(--surface2); border:1px solid var(--border); border-radius:6px; color:var(--text); }
+    .score-vs { font-size:0.65rem; letter-spacing:2px; color:var(--text-dim); }
+
+    /* Screenshot */
+    .screenshot-area { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+    .screenshot-label { font-size:0.7rem; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px; }
+    .screenshot-upload { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .upload-btn { position:relative; overflow:hidden; }
+    .upload-btn input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; font-size:0; }
+    .screenshot-preview { width:60px; height:60px; object-fit:cover; border-radius:6px; border:1px solid var(--border); cursor:pointer; }
+    .screenshot-existing { display:flex; align-items:center; gap:8px; }
+    .screenshot-thumb { width:48px; height:48px; object-fit:cover; border-radius:6px; border:1px solid rgba(0,224,122,0.3); cursor:pointer; }
+
+    /* Locked matchday upcoming */
+    .upcoming-match { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:8px; opacity:0.5; display:flex; align-items:center; gap:12px; }
+    .upcoming-vs { font-size:0.7rem; letter-spacing:2px; color:var(--text-dim); padding:0 8px; }
+
+    /* Bracket */
+    .bracket-wrap { display:flex; gap:0; overflow-x:auto; padding-bottom:16px; }
+    .bracket-round { min-width:200px; display:flex; flex-direction:column; }
+    .round-label { font-size:0.62rem; letter-spacing:2px; text-transform:uppercase; color:var(--text-dim); text-align:center; padding:10px; }
+    .bracket-slots { display:flex; flex-direction:column; justify-content:space-around; flex:1; gap:8px; padding:0 8px; }
+    .bracket-tile { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .bracket-tile.gold-border { border-color:var(--gold); box-shadow:0 0 12px rgba(255,208,96,0.2); }
+    .bracket-row { display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid var(--border); font-size:0.82rem; }
+    .bracket-row:last-child { border-bottom:none; }
+    .bracket-row.winner { background:rgba(0,224,122,0.1); color:var(--green); font-weight:700; }
+    .bracket-sc { font-family:'Bebas Neue',cursive; font-size:1.1rem; color:var(--gold); min-width:20px; text-align:right; }
+
+    /* Registration banner */
     .reg-banner { background:linear-gradient(135deg,rgba(0,224,122,0.08),rgba(0,200,255,0.06)); border:1px solid rgba(0,224,122,0.3); border-radius:12px; padding:20px 24px; margin-bottom:20px; }
-    .reg-banner-header { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; }
-    .reg-banner-form { display:none; margin-top:18px; padding-top:18px; border-top:1px solid rgba(0,224,122,0.2); }
-    .reg-banner-form.open { display:block; }
-    .reg-form-row { display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; }
+    .reg-form-open { margin-top:16px; padding-top:16px; border-top:1px solid rgba(0,224,122,0.2); display:none; }
+    .reg-form-open.open { display:block; }
   </style>
 </head>
 <body>
@@ -32,42 +83,32 @@
   </div>
 
   <div class="page-content">
-
-    <!-- Tournament summary card -->
     <div id="tournamentHeader" style="margin-bottom:16px"></div>
 
-    <!-- Registration banner — visible only when player is NOT registered and status is 'registration' -->
+    <!-- Registration banner -->
     <div id="registerBanner" style="display:none">
       <div class="reg-banner">
-        <div class="reg-banner-header">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px">
           <div>
-            <div style="font-family:'Bebas Neue',cursive;font-size:1.1rem;letter-spacing:2px;color:var(--green);margin-bottom:4px">
-              🎮 Registration is Open!
-            </div>
-            <div style="font-size:0.85rem;color:var(--text-dim)">
-              You haven't joined this tournament yet. Pick a team and enter now.
-            </div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:1.1rem;letter-spacing:2px;color:var(--green);margin-bottom:4px">🎮 Registration is Open!</div>
+            <div style="font-size:0.85rem;color:var(--text-dim)">You haven't joined this tournament yet. Pick a team to enter.</div>
           </div>
-          <button class="btn btn-green" id="registerNowBtn" onclick="showRegisterForm()">Register Now →</button>
+          <button class="btn btn-green" id="registerNowBtn" onclick="showRegForm()">Register Now →</button>
         </div>
-
-        <div class="reg-banner-form" id="registerFormArea">
-          <div id="registerFormMsg" style="margin-bottom:10px"></div>
-          <div class="reg-form-row">
+        <div class="reg-form-open" id="regFormArea">
+          <div id="regFormMsg" style="margin-bottom:10px"></div>
+          <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
             <div style="flex:1;min-width:200px">
               <label class="form-label">Choose Your Team</label>
-              <select id="teamSelect" class="form-select">
-                <option value="">-- Pick a Team --</option>
-              </select>
+              <select id="teamSelect" class="form-select"><option value="">-- Pick a Team --</option></select>
             </div>
-            <button class="btn btn-green" onclick="submitRegister()">Confirm Registration</button>
-            <button class="btn btn-ghost" onclick="hideRegisterForm()">Cancel</button>
+            <button class="btn btn-green" onclick="submitRegister()">Confirm</button>
+            <button class="btn btn-ghost" onclick="hideRegForm()">Cancel</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Tabs -->
     <div class="tab-bar">
       <div class="tab active" onclick="switchTab('players')">Players</div>
       <div class="tab" onclick="switchTab('groups')">Groups</div>
@@ -76,11 +117,17 @@
     </div>
 
     <div id="msgArea"></div>
-
     <div id="tab-players"  class="tab-panel active"></div>
     <div id="tab-groups"   class="tab-panel"></div>
     <div id="tab-fixtures" class="tab-panel"></div>
     <div id="tab-bracket"  class="tab-panel"></div>
+  </div>
+</div>
+
+<!-- Full screenshot viewer -->
+<div class="modal-backdrop" id="imgModal" onclick="this.classList.remove('open')">
+  <div class="modal" style="background:transparent;box-shadow:none;padding:0;max-width:90vw">
+    <img id="imgModalSrc" src="" style="max-width:100%;max-height:85vh;border-radius:8px;display:block">
   </div>
 </div>
 
@@ -89,9 +136,10 @@ import { buildNav } from './nav.js';
 const player = buildNav('tournaments');
 const params = new URLSearchParams(location.search);
 const tid = params.get('id');
-if (!tid) { location.href = 'tournaments.html'; }
+if (!tid) location.href = 'tournaments.html';
 
 let tournament, groups, matches, myRegId;
+let currentMatchday = 1, totalMatchdays = 0, groupDone = false;
 
 window.switchTab = function(tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -103,41 +151,50 @@ window.switchTab = function(tab) {
 
 async function load() {
   try {
-    const [tRes, gRes, mRes] = await Promise.all([
+    const [tRes, gRes, mRes, mdRes] = await Promise.all([
       fetch(`/api/tournaments/${tid}`),
       fetch(`/api/tournaments/${tid}/groups`),
-      fetch(`/api/tournaments/${tid}/matches`),
+      fetch(`/api/tournaments/${tid}/matches?matchday=${currentMatchday}`),
+      fetch(`/api/tournaments/${tid}/matchday`),
     ]);
     tournament = await tRes.json();
     groups     = await gRes.json();
     matches    = await mRes.json();
+    const mdInfo = await mdRes.json();
+
+    currentMatchday = mdInfo.current_matchday || 1;
+    totalMatchdays  = mdInfo.total_matchdays  || 0;
+    groupDone       = mdInfo.group_done       || false;
+
+    // Reload matches for the correct current matchday
+    const mRes2 = await fetch(`/api/tournaments/${tid}/matches?matchday=${currentMatchday}`);
+    matches = await mRes2.json();
 
     const myReg = (tournament.registrations || []).find(r => r.player_id == player.id);
     myRegId = myReg?.id;
 
     document.getElementById('topbarTitle').textContent = tournament.name?.toUpperCase();
     renderHeader();
-    checkRegistrationBanner();
+    checkRegBanner();
     renderPlayers();
     renderGroups();
     renderFixtures();
     renderBracket();
   } catch (err) {
     document.getElementById('msgArea').innerHTML =
-      `<div class="alert alert-error">Failed to load tournament: ${err.message}</div>`;
+      `<div class="alert alert-error">Failed to load: ${err.message}</div>`;
   }
 }
 
 function renderHeader() {
   const statusMap = {
-    registration: { chip: 'chip-green', label: '● Registration Open' },
-    group_stage:  { chip: 'chip-cyan',  label: '● Group Stage' },
-    knockout:     { chip: 'chip-gold',  label: '● Knockout Stage' },
-    completed:    { chip: 'chip-dim',   label: '✓ Completed' },
+    registration: { chip:'chip-green', label:'● Registration Open' },
+    group_stage:  { chip:'chip-cyan',  label:'● Group Stage' },
+    knockout:     { chip:'chip-gold',  label:'● Knockout' },
+    completed:    { chip:'chip-dim',   label:'✓ Completed' },
   };
   const s   = statusMap[tournament.status] || statusMap.completed;
   const pct = Math.round((tournament.registered_count / tournament.max_players) * 100);
-
   document.getElementById('tournamentHeader').innerHTML = `
     <div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px">
       <div>
@@ -145,25 +202,22 @@ function renderHeader() {
         ${tournament.description ? `<div style="color:var(--text-dim);font-size:0.85rem;margin-bottom:10px">${tournament.description}</div>` : ''}
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <span class="chip ${s.chip}">${s.label}</span>
-          <span style="font-size:0.78rem;color:var(--text-dim)">${tournament.max_players}-player bracket</span>
-          ${myRegId ? '<span class="chip chip-cyan">✓ You\'re Registered</span>' : ''}
+          <span style="font-size:0.78rem;color:var(--text-dim)">${tournament.max_players}-player</span>
+          ${myRegId ? '<span class="chip chip-cyan">✓ You\'re In</span>' : ''}
         </div>
       </div>
-      <div style="min-width:160px">
-        <div style="font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">REGISTRATIONS</div>
+      <div style="min-width:150px">
+        <div style="font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">PLAYERS</div>
         <div class="progress-bar" style="height:8px"><div class="progress-fill" style="width:${pct}%"></div></div>
         <div style="font-size:0.78rem;color:var(--text-dim);margin-top:5px">${tournament.registered_count} / ${tournament.max_players}</div>
       </div>
     </div>`;
 }
 
-function checkRegistrationBanner() {
-  const banner  = document.getElementById('registerBanner');
-  const isFull  = tournament.registered_count >= tournament.max_players;
-  const isOpen  = tournament.status === 'registration';
-  const notIn   = !myRegId;
-
-  if (isOpen && notIn && !isFull) {
+function checkRegBanner() {
+  const banner = document.getElementById('registerBanner');
+  const isFull = tournament.registered_count >= tournament.max_players;
+  if (tournament.status === 'registration' && !myRegId && !isFull) {
     banner.style.display = 'block';
     loadAvailableTeams();
   } else {
@@ -172,73 +226,47 @@ function checkRegistrationBanner() {
 }
 
 async function loadAvailableTeams() {
-  try {
-    const res = await fetch(`/api/tournaments/${tid}/available-teams`);
-    const teams = await res.json();
-    const sel = document.getElementById('teamSelect');
-    if (!teams.length) {
-      sel.innerHTML = '<option value="">No teams left</option>';
-    } else {
-      sel.innerHTML = '<option value="">-- Pick a Team --</option>' +
-        teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
-    }
-  } catch (_) {}
+  const res   = await fetch(`/api/tournaments/${tid}/available-teams`);
+  const teams = await res.json();
+  const sel   = document.getElementById('teamSelect');
+  sel.innerHTML = teams.length
+    ? '<option value="">-- Pick a Team --</option>' + teams.map(t => `<option value="${t.id}">${t.name}</option>`).join('')
+    : '<option value="">No teams left</option>';
 }
 
-window.showRegisterForm = function() {
-  document.getElementById('registerFormArea').classList.add('open');
-  document.getElementById('registerNowBtn').style.display = 'none';
-};
-
-window.hideRegisterForm = function() {
-  document.getElementById('registerFormArea').classList.remove('open');
-  document.getElementById('registerNowBtn').style.display = '';
-  document.getElementById('registerFormMsg').innerHTML = '';
-};
-
+window.showRegForm  = () => { document.getElementById('regFormArea').classList.add('open'); document.getElementById('registerNowBtn').style.display='none'; };
+window.hideRegForm  = () => { document.getElementById('regFormArea').classList.remove('open'); document.getElementById('registerNowBtn').style.display=''; };
 window.submitRegister = async function() {
   const team_id = parseInt(document.getElementById('teamSelect').value);
-  const msg = document.getElementById('registerFormMsg');
-  if (!team_id) {
-    msg.innerHTML = '<div class="alert alert-error">Please pick a team first.</div>';
-    return;
-  }
+  const msg     = document.getElementById('regFormMsg');
+  if (!team_id) { msg.innerHTML='<div class="alert alert-error">Pick a team.</div>'; return; }
   try {
-    const res = await fetch(`/api/tournaments/${tid}/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res  = await fetch(`/api/tournaments/${tid}/register`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ player_id: player.id, team_id })
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Registration failed');
-    msg.innerHTML = '<div class="alert alert-success">You\'re in! 🎉 Refreshing...</div>';
-    setTimeout(() => load(), 1200);
-  } catch (err) {
-    msg.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
-  }
+    if (!res.ok) throw new Error(data.message);
+    msg.innerHTML = '<div class="alert alert-success">You\'re in! 🎉</div>';
+    setTimeout(() => load(), 1000);
+  } catch(err) { msg.innerHTML=`<div class="alert alert-error">${err.message}</div>`; }
 };
 
 function renderPlayers() {
   const el   = document.getElementById('tab-players');
   const regs = tournament.registrations || [];
-  if (!regs.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">NO PLAYERS YET</div></div>';
-    return;
-  }
+  if (!regs.length) { el.innerHTML='<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">NO PLAYERS YET</div></div>'; return; }
   el.innerHTML = `
     <div class="card">
       <table class="tbl">
-        <thead><tr>
-          <th>#</th><th>Player</th><th>Team</th><th>Joined</th>
-        </tr></thead>
-        <tbody>
-          ${regs.map((r, i) => `
-            <tr>
-              <td class="center" style="color:var(--text-dim)">${i + 1}</td>
-              <td class="bold">${r.username}${r.player_id == player.id ? ' <span class="chip chip-cyan" style="font-size:0.6rem">You</span>' : ''}</td>
-              <td>${r.team_name}</td>
-              <td style="color:var(--text-dim);font-size:0.78rem">${new Date(r.created_at).toLocaleDateString()}</td>
-            </tr>`).join('')}
+        <thead><tr><th>#</th><th>Player</th><th>Team</th><th>Joined</th></tr></thead>
+        <tbody>${regs.map((r,i) => `
+          <tr>
+            <td class="center" style="color:var(--text-dim)">${i+1}</td>
+            <td class="bold">${r.username}${r.player_id==player.id?' <span class="chip chip-cyan" style="font-size:0.6rem">You</span>':''}</td>
+            <td>${r.team_name}</td>
+            <td style="color:var(--text-dim);font-size:0.78rem">${new Date(r.created_at).toLocaleDateString()}</td>
+          </tr>`).join('')}
         </tbody>
       </table>
     </div>`;
@@ -247,132 +275,214 @@ function renderPlayers() {
 function renderGroups() {
   const el = document.getElementById('tab-groups');
   if (!groups.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">GROUPS NOT DRAWN YET</div><div class="empty-sub">The admin will generate groups when registration closes.</div></div>';
+    el.innerHTML='<div class="empty"><div class="empty-icon">📊</div><div class="empty-title">GROUPS NOT DRAWN YET</div></div>';
     return;
   }
   const byGroup = {};
-  groups.forEach(g => {
-    if (!byGroup[g.group_name]) byGroup[g.group_name] = [];
-    byGroup[g.group_name].push(g);
-  });
-  Object.keys(byGroup).forEach(gn =>
-    byGroup[gn].sort((a, b) => b.points - a.points || (b.gf - b.ga) - (a.gf - a.ga))
-  );
+  groups.forEach(g => { if(!byGroup[g.group_name]) byGroup[g.group_name]=[]; byGroup[g.group_name].push(g); });
+  Object.keys(byGroup).forEach(gn => byGroup[gn].sort((a,b) => b.points-a.points || (b.gf-b.ga)-(a.gf-a.ga)));
 
-  el.innerHTML = `<div class="groups-grid">` + Object.keys(byGroup).sort().map(gn => {
+  el.innerHTML = `<div class="groups-grid">${Object.keys(byGroup).sort().map(gn => {
     const teams = byGroup[gn];
     return `
       <div class="card">
-        <div class="group-header">
-          <div class="group-letter">${gn}</div>
-          <div class="group-divider"></div>
-        </div>
+        <div class="group-header"><div class="group-letter">${gn}</div><div class="group-divider"></div></div>
         <table class="tbl">
-          <thead><tr>
-            <th>#</th><th>Player</th>
-            <th class="center">P</th><th class="center">W</th>
-            <th class="center">D</th><th class="center">L</th>
-            <th class="center">GD</th><th class="center">PTS</th>
-          </tr></thead>
-          <tbody>
-            ${teams.map((t, i) => {
-              const gd = t.gf - t.ga;
-              return `
-                <tr>
-                  <td class="center ${i < 2 ? 'pos-q' : ''}">${i + 1}</td>
-                  <td class="bold">${t.username || '?'}</td>
-                  <td class="center">${t.played}</td>
-                  <td class="center">${t.won}</td>
-                  <td class="center">${t.drawn}</td>
-                  <td class="center">${t.lost}</td>
-                  <td class="center" style="color:${gd > 0 ? 'var(--green)' : gd < 0 ? 'var(--red)' : 'inherit'}">${gd > 0 ? '+' : ''}${gd}</td>
-                  <td class="pts">${t.points}</td>
-                </tr>`;
-            }).join('')}
-          </tbody>
+          <thead><tr><th>#</th><th>Player</th><th class="center">P</th><th class="center">W</th><th class="center">D</th><th class="center">L</th><th class="center">GD</th><th class="center">PTS</th></tr></thead>
+          <tbody>${teams.map((t,i) => {
+            const gd = t.gf - t.ga;
+            return `<tr>
+              <td class="center ${i<2?'pos-q':''}">${i+1}</td>
+              <td class="bold">${t.username||'?'}</td>
+              <td class="center">${t.played}</td><td class="center">${t.won}</td>
+              <td class="center">${t.drawn}</td><td class="center">${t.lost}</td>
+              <td class="center" style="color:${gd>0?'var(--green)':gd<0?'var(--red)':'inherit'}">${gd>0?'+':''}${gd}</td>
+              <td class="pts">${t.points}</td>
+            </tr>`;
+          }).join('')}</tbody>
         </table>
       </div>`;
-  }).join('') + `</div>`;
+  }).join('')}</div>`;
 }
 
 function renderFixtures() {
   const el = document.getElementById('tab-fixtures');
-  if (!matches.length) {
+
+  // Separate group matches from knockout matches
+  const groupMatches    = matches.filter(m => m.stage === 'group');
+  const knockoutMatches = matches.filter(m => m.stage !== 'group');
+
+  if (!groupMatches.length && !knockoutMatches.length) {
     el.innerHTML = '<div class="empty"><div class="empty-icon">⚽</div><div class="empty-title">NO FIXTURES YET</div></div>';
     return;
   }
 
-  const sections = {};
-  matches.forEach(m => {
-    const key = m.group_name ? `group_${m.group_name}` : m.stage;
-    if (!sections[key]) sections[key] = {
-      title: m.group_name
-        ? `Group ${m.group_name}`
-        : (m.stage || '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      matches: []
-    };
-    sections[key].matches.push(m);
-  });
+  let html = '';
 
-  const stageOrder = ['group', 'quarter-final', 'semi-final', 'final'];
-  const sortedKeys = Object.keys(sections).sort((a, b) => {
-    const as = sections[a].matches[0].stage;
-    const bs = sections[b].matches[0].stage;
-    return stageOrder.indexOf(as) - stageOrder.indexOf(bs) || a.localeCompare(b);
-  });
+  // ── Group stage matchday view ──
+  if (groupMatches.length > 0 && totalMatchdays > 0) {
+    // Matchday header
+    const confirmedCount = groupMatches.filter(m => m.confirmed).length;
+    const allConfirmed   = confirmedCount === groupMatches.length;
 
-  el.innerHTML = sortedKeys.map(key => {
-    const sec = sections[key];
-    return `
-      <div style="margin-bottom:24px">
-        <div style="font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);
-                    padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:12px">
-          ${sec.title}
+    html += `
+      <div class="matchday-header">
+        <div>
+          <div class="matchday-title">Matchday ${currentMatchday}</div>
+          <div class="matchday-progress">${confirmedCount} / ${groupMatches.length} matches confirmed</div>
         </div>
-        ${sec.matches.map(m => matchCard(m)).join('')}
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          ${Array.from({length: totalMatchdays}, (_,i) => i+1).map(md => `
+            <button class="btn btn-sm ${md === currentMatchday ? 'btn-cyan' : md < currentMatchday ? 'btn-ghost' : 'btn-ghost'}"
+              style="${md > currentMatchday ? 'opacity:0.3;cursor:not-allowed' : 'cursor:pointer'}"
+              onclick="${md <= currentMatchday ? `switchMatchday(${md})` : ''}">${md > currentMatchday ? '🔒' : ''}MD${md}</button>
+          `).join('')}
+        </div>
       </div>`;
-  }).join('');
 
-  document.querySelectorAll('.save-btn').forEach(btn => {
+    // Group match cards for current matchday
+    // Group by group_name for display
+    const byGroup = {};
+    groupMatches.forEach(m => {
+      const k = m.group_name || 'A';
+      if (!byGroup[k]) byGroup[k] = [];
+      byGroup[k].push(m);
+    });
+
+    Object.keys(byGroup).sort().forEach(gn => {
+      html += `<div style="font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:12px">Group ${gn}</div>`;
+      byGroup[gn].forEach(m => { html += buildMatchCard(m); });
+    });
+  }
+
+  // ── Knockout matches ──
+  if (knockoutMatches.length > 0) {
+    const stageOrder = ['round-of-128','round-of-64','round-of-32','round-of-16','quarter-final','semi-final','final'];
+    const stages     = [...new Set(knockoutMatches.map(m => m.stage))].sort((a,b) => stageOrder.indexOf(a)-stageOrder.indexOf(b));
+    stages.forEach(stage => {
+      const sm = knockoutMatches.filter(m => m.stage === stage);
+      const label = stage.replace(/-/g,' ').replace(/\b\w/g,l=>l.toUpperCase());
+      html += `<div style="font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);padding:16px 0 10px;border-bottom:1px solid var(--border);margin-bottom:12px">${label}</div>`;
+      sm.forEach(m => { html += buildMatchCard(m); });
+    });
+  }
+
+  el.innerHTML = html;
+
+  // Attach save button handlers
+  el.querySelectorAll('.save-btn').forEach(btn => {
     btn.addEventListener('click', () => saveScore(btn.dataset.id));
+  });
+
+  // Attach file upload handlers
+  el.querySelectorAll('.file-input').forEach(input => {
+    input.addEventListener('change', () => handleImageUpload(input));
   });
 }
 
-function matchCard(m) {
+function buildMatchCard(m) {
   const isMyMatch = m.home_reg_id == myRegId || m.away_reg_id == myRegId;
   const confirmed = m.confirmed;
+  const hasScore  = m.home_score !== null && m.away_score !== null;
 
-  const scoreArea = confirmed
-    ? `<div style="text-align:center">
-         <div class="match-score">${m.home_score} – ${m.away_score}</div>
-         <span class="chip chip-green" style="font-size:0.6rem">✓ Confirmed</span>
-       </div>`
-    : `<div style="text-align:center">
-         <div class="score-inputs">
-           <input class="score-box" type="number" min="0" max="99" id="hs_${m.id}" value="${m.home_score ?? ''}" placeholder="-">
-           <span style="color:var(--text-dim);font-size:0.7rem;letter-spacing:1px">VS</span>
-           <input class="score-box" type="number" min="0" max="99" id="as_${m.id}" value="${m.away_score ?? ''}" placeholder="-">
-         </div>
-         <button class="btn btn-cyan btn-sm save-btn" data-id="${m.id}"
-           style="margin-top:6px;font-size:0.72rem;padding:4px 12px">Save</button>
-         ${m.home_score !== null && m.away_score !== null
-           ? '<div style="font-size:0.62rem;color:var(--text-dim);margin-top:3px">Awaiting confirmation</div>'
-           : ''}
-       </div>`;
+  // Score + upload block (only shown to the player in the match)
+  let centerContent = '';
+  if (confirmed) {
+    centerContent = `
+      <div class="match-score">${m.home_score} – ${m.away_score}</div>
+      <div style="margin-top:4px"><span class="chip chip-green" style="font-size:0.6rem">✓ Confirmed</span></div>
+      ${m.screenshot_url ? `<img src="${m.screenshot_url}" class="screenshot-thumb" style="margin-top:8px" onclick="viewImg('${m.screenshot_url}')">` : ''}`;
+  } else if (isMyMatch) {
+    centerContent = `
+      <div class="score-inputs">
+        <input class="score-box" type="number" min="0" max="99" id="hs_${m.id}" value="${m.home_score??''}" placeholder="-">
+        <span class="score-vs">VS</span>
+        <input class="score-box" type="number" min="0" max="99" id="as_${m.id}" value="${m.away_score??''}" placeholder="-">
+      </div>
+      <button class="btn btn-cyan btn-sm save-btn" data-id="${m.id}"
+        style="font-size:0.72rem;padding:4px 14px;margin-top:6px">Save Score</button>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div style="font-size:0.65rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">📸 Screenshot</div>
+        <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+                      background:var(--surface2);border:1px solid var(--border);border-radius:7px;
+                      padding:7px 12px;font-size:0.78rem;color:var(--text);transition:border-color 0.15s"
+               onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">
+          📎 ${m.screenshot_url ? 'Replace image' : 'Upload image'}
+          <input type="file" class="file-input" accept="image/*" data-match="${m.id}" style="display:none">
+        </label>
+        ${m.screenshot_url
+          ? `<div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+               <img src="${m.screenshot_url}" class="screenshot-thumb" onclick="viewImg('${m.screenshot_url}')">
+               <span class="chip chip-green" style="font-size:0.6rem">✓ Uploaded</span>
+             </div>`
+          : '<div style="font-size:0.72rem;color:var(--text-dim);margin-top:6px">No screenshot yet</div>'}
+        <div id="upload-status-${m.id}" style="font-size:0.72rem;margin-top:4px"></div>
+      </div>
+      ${hasScore && !m.screenshot_url ? '<div style="font-size:0.68rem;color:var(--gold);margin-top:6px">⚠ Upload screenshot for admin to confirm</div>' : ''}`;
+  } else {
+    // Spectator view — just show score if entered
+    centerContent = `
+      <div class="match-score" style="color:${hasScore?'var(--gold)':'var(--text-dim)'};font-size:${hasScore?'1.8rem':'1rem'}">
+        ${hasScore ? `${m.home_score} – ${m.away_score}` : '— vs —'}
+      </div>
+      ${m.screenshot_url ? `<img src="${m.screenshot_url}" class="screenshot-thumb" style="margin-top:8px" onclick="viewImg('${m.screenshot_url}')">` : ''}`;
+  }
 
   return `
-    <div class="match-card ${confirmed ? 'confirmed' : ''}"
-         style="${isMyMatch ? 'border-color:rgba(0,200,255,0.35);' : ''}">
-      <div class="match-side">
-        <div class="match-team">${m.home_team_name}</div>
-        <div class="match-player">${m.home_player}</div>
-      </div>
-      ${scoreArea}
-      <div class="match-side right">
-        <div class="match-team">${m.away_team_name}</div>
-        <div class="match-player">${m.away_player}</div>
+    <div class="match-card ${confirmed?'confirmed':''} ${isMyMatch?'my-match':''}" data-match="${m.id}">
+      <div class="match-layout">
+        <div class="match-side">
+          <div class="match-team">${m.home_team_name}</div>
+          <div class="match-player">${m.home_player}</div>
+        </div>
+        <div class="match-center" style="min-width:160px">${centerContent}</div>
+        <div class="match-side right">
+          <div class="match-team">${m.away_team_name}</div>
+          <div class="match-player">${m.away_player}</div>
+        </div>
       </div>
     </div>`;
+}
+
+async function handleImageUpload(input) {
+  const matchId  = input.dataset.match;
+  const file     = input.files[0];
+  if (!file) return;
+
+  const statusEl = document.getElementById(`upload-status-${matchId}`);
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-dim)">Uploading...</span>';
+
+  try {
+    // Read as base64
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload  = e => resolve(e.target.result.split(',')[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+
+    const res  = await fetch(`/api/tournaments/${tid}/matches/${matchId}/screenshot`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image_base64: base64, content_type: file.type })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || data.message);
+
+    // Save the URL to the match
+    await fetch(`/api/tournaments/${tid}/matches/${matchId}/score`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        home_score: parseInt(document.getElementById(`hs_${matchId}`)?.value) || 0,
+        away_score: parseInt(document.getElementById(`as_${matchId}`)?.value) || 0,
+        screenshot_url: data.url
+      })
+    });
+
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--green)">✓ Uploaded!</span>';
+    setTimeout(() => load(), 1000);
+  } catch (err) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--red)">${err.message}</span>`;
+  }
 }
 
 async function saveScore(id) {
@@ -380,24 +490,36 @@ async function saveScore(id) {
   const as  = document.getElementById(`as_${id}`)?.value;
   const msg = document.getElementById('msgArea');
   if (hs === '' || as === '') {
-    msg.innerHTML = '<div class="alert alert-error">Enter both scores before saving.</div>';
-    setTimeout(() => msg.innerHTML = '', 3000);
+    msg.innerHTML = '<div class="alert alert-error">Enter both scores.</div>';
+    setTimeout(() => msg.innerHTML='', 3000);
     return;
   }
   try {
-    const res = await fetch(`/api/tournaments/${tid}/matches/${id}/score`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+    const res  = await fetch(`/api/tournaments/${tid}/matches/${id}/score`, {
+      method:'PUT', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ home_score: parseInt(hs), away_score: parseInt(as) })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.message);
-    msg.innerHTML = '<div class="alert alert-success">Score saved!</div>';
-    setTimeout(() => { msg.innerHTML = ''; load(); }, 1500);
+    msg.innerHTML = '<div class="alert alert-success">Score saved! Upload a screenshot below to help admin confirm.</div>';
+    setTimeout(() => { msg.innerHTML=''; load(); }, 2000);
   } catch (err) {
     msg.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
   }
 }
+
+window.switchMatchday = async function(md) {
+  if (md > currentMatchday) return; // locked
+  currentMatchday = md;
+  const res = await fetch(`/api/tournaments/${tid}/matches?matchday=${md}`);
+  matches   = await res.json();
+  renderFixtures();
+};
+
+window.viewImg = function(url) {
+  document.getElementById('imgModalSrc').src = url;
+  document.getElementById('imgModal').classList.add('open');
+};
 
 function renderBracket() {
   const el       = document.getElementById('tab-bracket');
@@ -407,54 +529,47 @@ function renderBracket() {
     return;
   }
 
-  const rounds  = ['round-of-16', 'quarter-final', 'semi-final', 'final'];
+  const rounds  = ['round-of-128','round-of-64','round-of-32','round-of-16','quarter-final','semi-final','final'];
   const present = rounds.filter(r => knockout.some(m => m.stage === r));
 
-  el.innerHTML = `<div class="bracket-wrap">` + present.map(stage => {
-    const ms = knockout.filter(m => m.stage === stage)
-      .sort((a, b) => (a.match_order || 0) - (b.match_order || 0));
+  el.innerHTML = `<div class="bracket-wrap">${present.map(stage => {
+    const ms = knockout.filter(m => m.stage === stage).sort((a,b) => (a.match_order||0)-(b.match_order||0));
     return `
       <div class="bracket-round">
-        <div class="round-label">${stage.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</div>
+        <div class="round-label">${stage.replace(/-/g,' ').replace(/\b\w/g,l=>l.toUpperCase())}</div>
         <div class="bracket-slots">
           ${ms.map(m => {
             if (!m.home_team_id && !m.away_team_id) return `
-              <div class="bracket-match-wrap">
-                <div class="bracket-tile">
-                  <div class="bracket-row" style="color:var(--text-dim);font-style:italic">TBD</div>
-                  <div class="bracket-row" style="color:var(--text-dim);font-style:italic">TBD</div>
-                </div>
+              <div class="bracket-tile">
+                <div class="bracket-row" style="color:var(--text-dim);font-style:italic">TBD</div>
+                <div class="bracket-row" style="color:var(--text-dim);font-style:italic">TBD</div>
               </div>`;
             const hw = m.confirmed && m.home_score > m.away_score;
             const aw = m.confirmed && m.away_score > m.home_score;
             return `
-              <div class="bracket-match-wrap">
-                <div class="bracket-tile ${stage === 'final' ? 'gold-border' : ''}">
-                  <div class="bracket-row ${hw ? 'winner' : ''}">
-                    <span class="bracket-name">${m.home_player || m.home_team_name}</span>
-                    <span class="bracket-sc">${m.home_score !== null ? m.home_score : '-'}</span>
-                  </div>
-                  <div class="bracket-row ${aw ? 'winner' : ''}">
-                    <span class="bracket-name">${m.away_player || m.away_team_name}</span>
-                    <span class="bracket-sc">${m.away_score !== null ? m.away_score : '-'}</span>
-                  </div>
+              <div class="bracket-tile ${stage==='final'?'gold-border':''}">
+                <div class="bracket-row ${hw?'winner':''}">
+                  <span>${m.home_player||m.home_team_name}</span>
+                  <span class="bracket-sc">${m.home_score!==null?m.home_score:'-'}</span>
+                </div>
+                <div class="bracket-row ${aw?'winner':''}">
+                  <span>${m.away_player||m.away_team_name}</span>
+                  <span class="bracket-sc">${m.away_score!==null?m.away_score:'-'}</span>
                 </div>
               </div>`;
           }).join('')}
         </div>
       </div>`;
-  }).join('') + `</div>`;
+  }).join('')}</div>`;
 
-  const final = knockout.find(m => m.stage === 'final' && m.confirmed);
+  const final = knockout.find(m => m.stage==='final' && m.confirmed);
   if (final) {
     const champ = final.home_score > final.away_score ? final.home_player : final.away_player;
     el.innerHTML += `
       <div style="text-align:center;padding:30px 20px">
         <div style="font-size:3rem;margin-bottom:10px">🏆</div>
-        <div style="font-family:'Bebas Neue',cursive;font-size:2rem;letter-spacing:4px;
-                    color:var(--gold);text-shadow:0 0 20px rgba(255,208,96,0.5)">${champ}</div>
-        <div style="font-size:0.7rem;letter-spacing:2px;color:var(--text-dim);
-                    text-transform:uppercase;margin-top:4px">Champion</div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:2rem;letter-spacing:4px;color:var(--gold);text-shadow:0 0 20px rgba(255,208,96,0.5)">${champ}</div>
+        <div style="font-size:0.7rem;letter-spacing:2px;color:var(--text-dim);text-transform:uppercase;margin-top:4px">Champion</div>
       </div>`;
   }
 }

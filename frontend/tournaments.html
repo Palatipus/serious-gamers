@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tournaments — Serious Gamers</title>
+  <link rel="stylesheet" href="portal.css">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+</head>
+<body>
+<div class="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" id="hamburgerBtn">☰</button>
+      <span class="topbar-title">TOURNAMENTS</span>
+    </div>
+    <div class="topbar-right">
+      <div class="chip chip-cyan" id="filterActive" style="cursor:pointer" onclick="setFilter('active')">Active</div>
+      <div class="chip chip-dim"  id="filterAll"    style="cursor:pointer" onclick="setFilter('all')">All</div>
+      <div class="chip chip-dim"  id="filterDone"   style="cursor:pointer" onclick="setFilter('completed')">Past</div>
+    </div>
+  </div>
+  <div class="page-content">
+    <div id="tournamentList">
+      <div class="empty">
+        <div class="spinner" style="width:36px;height:36px;border-width:3px;margin:0 auto 16px"></div>
+        <div class="empty-title">Loading...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { buildNav } from './nav.js';
+const player = buildNav('tournaments');
+
+let allTournaments = [];
+let myRegisteredIds = new Set();
+let currentFilter = 'active';
+
+async function load() {
+  try {
+    // Two parallel calls — all tournaments + which ones this player joined
+    const [tourRes, regRes] = await Promise.all([
+      fetch('/api/tournaments'),
+      fetch(`/api/players/${player.id}/registrations`)
+    ]);
+
+    if (!tourRes.ok) throw new Error('Could not load tournaments');
+    allTournaments = await tourRes.json();
+
+    const myRegs = await regRes.json();
+    myRegisteredIds = new Set(myRegs.map(r => r.tournament_id));
+
+    render();
+  } catch (err) {
+    document.getElementById('tournamentList').innerHTML =
+      `<div class="alert alert-error">${err.message}</div>`;
+  }
+}
+
+window.setFilter = function(f) {
+  currentFilter = f;
+  document.getElementById('filterActive').className = 'chip chip-dim';
+  document.getElementById('filterAll').className    = 'chip chip-dim';
+  document.getElementById('filterDone').className   = 'chip chip-dim';
+  const ids = { active: 'filterActive', all: 'filterAll', completed: 'filterDone' };
+  document.getElementById(ids[f]).className = 'chip chip-cyan';
+  render();
+};
+
+function render() {
+  let list = allTournaments;
+  if (currentFilter === 'active')    list = allTournaments.filter(t => t.status !== 'completed');
+  if (currentFilter === 'completed') list = allTournaments.filter(t => t.status === 'completed');
+
+  const el = document.getElementById('tournamentList');
+
+  if (!list.length) {
+    el.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🏆</div>
+        <div class="empty-title">NO TOURNAMENTS</div>
+        <div class="empty-sub">${
+          currentFilter === 'active'
+            ? 'No active tournaments right now. The admin will create one soon!'
+            : 'No tournaments found.'
+        }</div>
+      </div>`;
+    return;
+  }
+
+  const statusMap = {
+    registration: { chip: 'chip-green', label: '● Registration Open' },
+    group_stage:  { chip: 'chip-cyan',  label: '● Group Stage' },
+    knockout:     { chip: 'chip-gold',  label: '● Knockout Stage' },
+    completed:    { chip: 'chip-dim',   label: '✓ Completed' },
+  };
+
+  el.innerHTML = list.map(t => {
+    const pct      = Math.round((t.registered_count / t.max_players) * 100);
+    const isFull   = t.registered_count >= t.max_players;
+    const isJoined = myRegisteredIds.has(t.id);
+    const s        = statusMap[t.status] || statusMap.completed;
+
+    // Decide what action button to show
+    let action = '';
+    if (isJoined) {
+      // Already in — show badge and a link to view the tournament
+      action = `
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span class="chip chip-cyan">✓ Registered</span>
+          <button class="btn btn-ghost btn-sm" onclick="location.href='tournament.html?id=${t.id}'">View →</button>
+        </div>`;
+    } else if (t.status === 'registration' && !isFull) {
+      // Not joined, open — send to tournament page where the register banner is shown
+      action = `<button class="btn btn-green btn-sm" style="flex-shrink:0"
+                  onclick="location.href='tournament.html?id=${t.id}'">Register →</button>`;
+    } else if (t.status === 'registration' && isFull) {
+      action = `<span class="chip chip-red" style="flex-shrink:0">Full</span>`;
+    } else {
+      action = `<button class="btn btn-ghost btn-sm" style="flex-shrink:0"
+                  onclick="location.href='tournament.html?id=${t.id}'">View →</button>`;
+    }
+
+    return `
+      <div class="tournament-card status-${t.status}" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;
+                    margin-bottom:10px;gap:10px">
+          <div style="min-width:0">
+            <div class="t-name" style="cursor:pointer"
+                 onclick="location.href='tournament.html?id=${t.id}'">${t.name}</div>
+            ${t.description ? `<div class="t-desc">${t.description}</div>` : ''}
+          </div>
+          <span class="chip ${s.chip}" style="white-space:nowrap;flex-shrink:0">${s.label}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+          <div style="flex:1;min-width:120px">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${pct}%"></div>
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:3px">
+              ${t.registered_count} / ${t.max_players} players
+            </div>
+          </div>
+          <div style="font-size:0.78rem;color:var(--text-dim);white-space:nowrap">
+            ${t.max_players}-player bracket
+          </div>
+          ${action}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+load();
+</script>
+</body>
+</html>

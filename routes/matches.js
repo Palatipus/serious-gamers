@@ -1,30 +1,20 @@
 import express from 'express';
-import { supabase } from '../lib/supabase.js';
+import { supabase, supabaseAdmin } from '../lib/supabase.js';
 
 const router = express.Router();
 
-// Stage ordering for display
 const STAGE_ORDER = [
   'group',
   'round-of-128', 'round-of-64', 'round-of-32', 'round-of-16',
   'quarter-final', 'semi-final', 'final'
 ];
 
-// Human-readable stage names from number of teams
 function stageFromCount(n) {
-  const map = {
-    128: 'round-of-128',
-    64:  'round-of-64',
-    32:  'round-of-32',
-    16:  'round-of-16',
-    8:   'quarter-final',
-    4:   'semi-final',
-    2:   'final'
-  };
+  const map = { 128:'round-of-128', 64:'round-of-64', 32:'round-of-32',
+                16:'round-of-16', 8:'quarter-final', 4:'semi-final', 2:'final' };
   return map[n] || `round-of-${n}`;
 }
 
-// ── Enrich matches with team/player names ────────────────────────
 async function enrichMatches(matches) {
   if (!matches.length) return [];
   const { data: teams }   = await supabase.from('teams').select('*');
@@ -48,19 +38,61 @@ async function enrichMatches(matches) {
   });
 }
 
-// ── GET matches ──────────────────────────────────────────────────
+// ── GET current matchday info for a tournament ───────────────────
+// Returns { current_matchday, total_matchdays, all_confirmed }
+router.get('/tournaments/:id/matchday', async (req, res) => {
+  try {
+    const { data: groupMatches } = await supabase
+      .from('matches').select('matchday, confirmed')
+      .eq('tournament_id', req.params.id)
+      .eq('stage', 'group');
+
+    if (!groupMatches || !groupMatches.length)
+      return res.json({ current_matchday: 1, total_matchdays: 0, group_done: false });
+
+    const total = Math.max(...groupMatches.map(m => m.matchday || 1));
+
+    // Find the lowest matchday that still has unconfirmed matches
+    let current = total; // default to last if all confirmed
+    for (let md = 1; md <= total; md++) {
+      const mdMatches = groupMatches.filter(m => m.matchday === md);
+      const allDone   = mdMatches.every(m => m.confirmed);
+      if (!allDone) { current = md; break; }
+    }
+
+    const allConfirmed = groupMatches.every(m => m.confirmed);
+
+    res.json({ current_matchday: current, total_matchdays: total, group_done: allConfirmed });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── GET matches (with matchday filtering for group stage) ────────
 router.get('/tournaments/:id/matches', async (req, res) => {
   try {
-    const { data: matches, error } = await supabase
-      .from('matches').select('*').eq('tournament_id', req.params.id)
-      .order('id');
+    const { matchday, all } = req.query;
+
+    let query = supabase.from('matches').select('*').eq('tournament_id', req.params.id);
+
+    // If matchday param is given and not requesting all, filter to that matchday (group matches only)
+    // Knockout matches are always included
+    const { data: rawMatches, error } = await query.order('id');
     if (error) throw error;
 
-    const enriched = await enrichMatches(matches || []);
-    // Sort by stage order then match_order
+    let matches = rawMatches || [];
+
+    // If specific matchday requested, show only that matchday's group matches + all knockout matches
+    if (matchday && all !== 'true') {
+      const md = parseInt(matchday);
+      matches = matches.filter(m => m.stage !== 'group' || m.matchday === md);
+    }
+
+    const enriched = await enrichMatches(matches);
     enriched.sort((a, b) => {
       const si = STAGE_ORDER.indexOf(a.stage) - STAGE_ORDER.indexOf(b.stage);
       if (si !== 0) return si;
+      if (a.matchday !== b.matchday) return (a.matchday || 1) - (b.matchday || 1);
       if (a.group_name && b.group_name) return a.group_name.localeCompare(b.group_name);
       return (a.match_order || 0) - (b.match_order || 0);
     });
@@ -71,25 +103,55 @@ router.get('/tournaments/:id/matches', async (req, res) => {
   }
 });
 
-// ── SAVE score ───────────────────────────────────────────────────
+// ── SAVE score + optional screenshot URL ────────────────────────
 router.put('/tournaments/:tid/matches/:id/score', async (req, res) => {
-  const { home_score, away_score } = req.body;
+  const { home_score, away_score, screenshot_url } = req.body;
   try {
     const { data: match } = await supabase
       .from('matches').select('confirmed').eq('id', req.params.id).single();
     if (match?.confirmed)
       return res.status(403).json({ message: 'Match is locked and confirmed.' });
 
-    await supabase.from('matches')
-      .update({ home_score: parseInt(home_score), away_score: parseInt(away_score) })
-      .eq('id', req.params.id);
+    const updates = {
+      home_score: parseInt(home_score),
+      away_score: parseInt(away_score),
+    };
+    if (screenshot_url) updates.screenshot_url = screenshot_url;
+
+    await supabase.from('matches').update(updates).eq('id', req.params.id);
     res.json({ message: 'Score saved!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// ── CONFIRM single match (admin) ─────────────────────────────────
+// ── UPLOAD screenshot → get public URL ──────────────────────────
+// Accepts base64 image, stores in Supabase Storage, returns public URL
+router.post('/tournaments/:tid/matches/:id/screenshot', async (req, res) => {
+  const { image_base64, content_type } = req.body;
+  if (!image_base64) return res.status(400).json({ message: 'No image data.' });
+
+  try {
+    const match = req.params.id;
+    const ext   = (content_type || 'image/jpeg').split('/')[1] || 'jpg';
+    const path  = `matches/${match}_${Date.now()}.${ext}`;
+
+    const buffer = Buffer.from(image_base64, 'base64');
+
+    const { error } = await supabaseAdmin.storage
+      .from('screenshots')
+      .upload(path, buffer, { contentType: content_type || 'image/jpeg', upsert: true });
+
+    if (error) throw error;
+
+    const { data: urlData } = supabaseAdmin.storage.from('screenshots').getPublicUrl(path);
+    res.json({ url: urlData.publicUrl });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── CONFIRM single match ─────────────────────────────────────────
 router.put('/tournaments/:tid/matches/:id/confirm', async (req, res) => {
   const { password } = req.body;
   if (password !== process.env.ADMIN_PASSWORD)
@@ -111,9 +173,9 @@ router.put('/tournaments/:tid/matches/:id/confirm', async (req, res) => {
   }
 });
 
-// ── CONFIRM ALL matches with scores (admin) ──────────────────────
+// ── CONFIRM ALL with scores ──────────────────────────────────────
 router.put('/tournaments/:id/matches/confirm-all', async (req, res) => {
-  const { password, group_name } = req.body;
+  const { password, group_name, matchday } = req.body;
   if (password !== process.env.ADMIN_PASSWORD)
     return res.status(403).json({ message: 'Invalid admin password.' });
 
@@ -121,6 +183,7 @@ router.put('/tournaments/:id/matches/confirm-all', async (req, res) => {
     let q = supabase.from('matches').select('*')
       .eq('tournament_id', req.params.id).eq('confirmed', false);
     if (group_name) q = q.eq('group_name', group_name);
+    if (matchday)   q = q.eq('matchday', matchday);
     const { data: matches } = await q;
 
     let count = 0;
@@ -138,7 +201,6 @@ router.put('/tournaments/:id/matches/confirm-all', async (req, res) => {
 });
 
 // ── GENERATE KNOCKOUT BRACKET ────────────────────────────────────
-// Works for both formats and all sizes
 router.post('/tournaments/:id/matches/generate-knockout', async (req, res) => {
   const { password } = req.body;
   if (password !== process.env.ADMIN_PASSWORD)
@@ -151,21 +213,17 @@ router.post('/tournaments/:id/matches/generate-knockout', async (req, res) => {
     if (!tournament) return res.status(404).json({ message: 'Tournament not found.' });
 
     const { data: regs } = await supabase
-      .from('registrations').select('id, team_id, player_id')
-      .eq('tournament_id', tournament_id);
+      .from('registrations').select('id, team_id, player_id').eq('tournament_id', tournament_id);
 
-    // Delete any existing knockout matches
     await supabase.from('matches')
       .delete().eq('tournament_id', tournament_id).neq('stage', 'group');
 
-    let seededTeams = []; // array of { team_id, reg_id } in bracket order
+    let seededTeams = [];
 
     if (tournament.format === 'knockout') {
-      // ── PURE KNOCKOUT: seed all registered players randomly ──
       const shuffled = [...(regs || [])].sort(() => Math.random() - 0.5);
       seededTeams = shuffled.map(r => ({ team_id: r.team_id, reg_id: r.id }));
     } else {
-      // ── GROUP→KNOCKOUT: take top 2 from each group ──────────
       const { data: groups } = await supabase
         .from('groups').select('*').eq('tournament_id', tournament_id)
         .order('group_name').order('points', { ascending: false })
@@ -181,46 +239,34 @@ router.post('/tournaments/:id/matches/generate-knockout', async (req, res) => {
         if (gt[1]) runnersUp.push(gt[1]);
       });
 
-      // Classic seeding: W1 vs RU(last), W2 vs RU(second-to-last), etc.
-      // This avoids groups from the same half meeting early
       for (let i = 0; i < winners.length; i++) {
-        const w  = winners[i];
-        const ru = runnersUp[runnersUp.length - 1 - i];
+        const w   = winners[i];
+        const ru  = runnersUp[runnersUp.length - 1 - i];
         const wReg  = regs?.find(r => r.team_id === w?.team_id);
         const ruReg = regs?.find(r => r.team_id === ru?.team_id);
-        if (w)  seededTeams.push({ team_id: w.team_id,   reg_id: wReg?.id  });
+        if (w)  seededTeams.push({ team_id: w.team_id,   reg_id: wReg?.id });
         if (ru) seededTeams.push({ team_id: ru?.team_id, reg_id: ruReg?.id });
       }
     }
 
-    // Build full bracket from seeded list
     const knockoutMatches = buildBracket(seededTeams, tournament_id);
+    if (knockoutMatches.length) await supabase.from('matches').insert(knockoutMatches);
 
-    if (knockoutMatches.length) {
-      await supabase.from('matches').insert(knockoutMatches);
-    }
-
-    // Update status
     await supabase.from('tournaments')
       .update({ status: 'knockout', started_at: new Date().toISOString() })
       .eq('id', tournament_id);
 
-    const firstStage = knockoutMatches[0]?.stage || 'knockout';
-    res.json({ message: `Knockout bracket generated! Starting from ${firstStage.replace(/-/g, ' ')}.` });
+    res.json({ message: `Knockout bracket generated!` });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Build a full single-elimination bracket from a seeded list
-// Pairs [0 vs 1], [2 vs 3], [4 vs 5]... for round 1
-// Subsequent rounds are TBD placeholders
 function buildBracket(seeds, tournament_id) {
   const matches = [];
   const n = seeds.length;
   if (n < 2) return matches;
 
-  // Round 1 — use actual seeds
   const firstStage = stageFromCount(n);
   const r1Count    = Math.floor(n / 2);
 
@@ -228,38 +274,29 @@ function buildBracket(seeds, tournament_id) {
     const home = seeds[i * 2];
     const away = seeds[i * 2 + 1];
     matches.push({
-      tournament_id,
-      stage:        firstStage,
-      match_order:  i + 1,
-      home_reg_id:  home?.reg_id  || null,
-      away_reg_id:  away?.reg_id  || null,
-      home_team_id: home?.team_id || null,
-      away_team_id: away?.team_id || null,
-      confirmed:    false
+      tournament_id, stage: firstStage, match_order: i + 1,
+      home_reg_id: home?.reg_id || null, away_reg_id: away?.reg_id || null,
+      home_team_id: home?.team_id || null, away_team_id: away?.team_id || null,
+      confirmed: false
     });
   }
 
-  // Subsequent rounds — TBD placeholders so bracket is visible
   let remaining = r1Count;
   while (remaining > 1) {
     remaining = Math.ceil(remaining / 2);
     const stage = stageFromCount(remaining * 2);
     for (let i = 0; i < remaining; i++) {
       matches.push({
-        tournament_id,
-        stage,
-        match_order:  i + 1,
-        home_reg_id:  null, away_reg_id:  null,
+        tournament_id, stage, match_order: i + 1,
+        home_reg_id: null, away_reg_id: null,
         home_team_id: null, away_team_id: null,
-        confirmed:    false
+        confirmed: false
       });
     }
   }
-
   return matches;
 }
 
-// ── UPDATE STANDINGS after a confirmed group match ───────────────
 async function updateStandings(match) {
   const { home_score, away_score, home_team_id, away_team_id, group_name, tournament_id } = match;
   const hs = parseInt(home_score);
@@ -271,12 +308,8 @@ async function updateStandings(match) {
       .eq('group_name', group_name).single();
     if (!data) return;
     await supabase.from('groups').update({
-      played: data.played + 1,
-      won:    data.won + w,
-      drawn:  data.drawn + d,
-      lost:   data.lost + l,
-      gf:     data.gf + scored,
-      ga:     data.ga + conceded,
+      played: data.played + 1, won: data.won + w, drawn: data.drawn + d, lost: data.lost + l,
+      gf: data.gf + scored, ga: data.ga + conceded,
       points: data.points + (w ? 3 : d ? 1 : 0)
     }).eq('id', data.id);
   }

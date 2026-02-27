@@ -2,29 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Admin — Good Gamers</title>
+  <title>Admin — Serious Gamers</title>
   <link rel="stylesheet" href="portal.css">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
     body { display:flex; min-height:100vh; }
     .admin-main { flex:1; display:flex; flex-direction:column; }
-    .login-wrap { display:flex; align-items:center; justify-content:center; flex:1; }
-    .login-box { width:100%; max-width:380px; }
+    .login-wrap { display:flex; align-items:center; justify-content:center; flex:1; padding:20px; }
+    .login-box  { width:100%; max-width:380px; }
     .login-box h2 { font-family:'Bebas Neue',cursive; font-size:1.5rem; letter-spacing:3px; color:var(--red); margin-bottom:6px; }
-    .login-box p { font-size:0.82rem; color:var(--text-dim); margin-bottom:24px; }
+    .login-box p  { font-size:0.82rem; color:var(--text-dim); margin-bottom:24px; }
+
+    /* Format picker toggle */
+    .format-toggle { display:flex; gap:0; border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .format-opt { flex:1; padding:10px; text-align:center; font-size:0.82rem; font-weight:600; cursor:pointer; color:var(--text-dim); background:var(--surface2); transition:all 0.15s; border:none; }
+    .format-opt.active { background:var(--cyan); color:#000; }
+    .format-desc { font-size:0.75rem; color:var(--text-dim); margin-top:8px; min-height:32px; }
+
+    /* Tournament cards */
     .t-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; margin-bottom:10px; }
-    .t-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; }
     .t-card-name { font-family:'Bebas Neue',cursive; font-size:1.2rem; letter-spacing:2px; }
-    .t-card-actions { display:flex; gap:6px; flex-wrap:wrap; }
-    .match-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+    .t-card-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
+
+    /* Match rows in modal */
+    .match-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
     .match-row:last-child { border-bottom:none; }
-    .match-teams { flex:1; font-size:0.88rem; min-width:180px; }
-    .match-score-disp { font-family:'Bebas Neue',cursive; font-size:1.2rem; color:var(--gold); min-width:50px; text-align:center; }
+    .match-teams { flex:1; min-width:140px; font-size:0.85rem; }
+    .match-score-disp { font-family:'Bebas Neue',cursive; font-size:1.2rem; color:var(--gold); min-width:54px; text-align:center; }
   </style>
 </head>
 <body>
-<div class="admin-main" id="adminMain">
-  <!-- LOGIN -->
+<div class="admin-main">
+
+  <!-- ── LOGIN ── -->
   <div class="login-wrap" id="loginWrap">
     <div class="login-box card">
       <h2>🔐 ADMIN LOGIN</h2>
@@ -35,56 +45,91 @@
         <input type="password" id="adminPwd" class="form-input" placeholder="Enter password">
       </div>
       <button class="btn btn-red btn-lg" style="width:100%" onclick="adminLogin()">Login as Admin</button>
+      <div style="text-align:center;margin-top:14px">
+        <a href="index.html" style="font-size:0.78rem;color:var(--text-dim);text-decoration:none">← Back to Player Portal</a>
+      </div>
     </div>
   </div>
 
-  <!-- PANEL -->
+  <!-- ── ADMIN PANEL ── -->
   <div id="adminPanel" style="display:none;flex-direction:column;flex:1">
     <div class="topbar">
-      <span class="topbar-title" style="color:var(--red)">⚡ ADMIN CONTROL</span>
+      <span class="topbar-title" style="color:var(--red)">⚡ ADMIN CONTROL PANEL</span>
       <div class="topbar-right">
-        <span style="font-size:0.78rem;color:var(--text-dim)">Admin Mode</span>
+        <a href="index.html" class="btn btn-ghost btn-sm">Player Portal</a>
         <button class="btn btn-ghost btn-sm" onclick="adminLogout()">Logout</button>
       </div>
     </div>
-    <div class="page-content">
-      <div id="adminMsg" style="margin-bottom:12px"></div>
 
-      <!-- Create tournament -->
-      <div style="margin-bottom:32px">
-        <div class="section-header"><div class="section-title">CREATE TOURNAMENT</div></div>
-        <div class="card" style="max-width:560px">
-          <div class="grid-2" style="gap:14px">
+    <div class="page-content">
+      <div id="adminMsg" style="margin-bottom:14px"></div>
+
+      <!-- ── CREATE TOURNAMENT ── -->
+      <div style="margin-bottom:36px">
+        <div class="section-header">
+          <div class="section-title">CREATE TOURNAMENT</div>
+        </div>
+        <div class="card" style="max-width:620px">
+
+          <div class="grid-2" style="gap:14px;margin-bottom:14px">
             <div class="form-row" style="margin:0">
               <label class="form-label">Tournament Name</label>
-              <input type="text" id="tName" class="form-input" placeholder="e.g. Season 1">
+              <input type="text" id="tName" class="form-input" placeholder="e.g. Season 1 Cup">
             </div>
             <div class="form-row" style="margin:0">
-              <label class="form-label">Max Players</label>
-              <select id="tSize" class="form-select">
-                <option value="16">16 Players (4 Groups)</option>
-                <option value="32" selected>32 Players (8 Groups)</option>
-              </select>
+              <label class="form-label">Description (optional)</label>
+              <input type="text" id="tDesc" class="form-input" placeholder="e.g. Winner takes all">
             </div>
           </div>
-          <div class="form-row" style="margin:14px 0 16px">
-            <label class="form-label">Description (optional)</label>
-            <input type="text" id="tDesc" class="form-input" placeholder="e.g. First ever Serious Gamers season">
+
+          <!-- Size picker -->
+          <div class="form-row" style="margin-bottom:16px">
+            <label class="form-label">Number of Players</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-ghost btn-sm size-btn" data-size="8"   onclick="setSize(8)">8</button>
+              <button class="btn btn-ghost btn-sm size-btn" data-size="16"  onclick="setSize(16)">16</button>
+              <button class="btn btn-cyan  btn-sm size-btn" data-size="32"  onclick="setSize(32)">32</button>
+              <button class="btn btn-ghost btn-sm size-btn" data-size="64"  onclick="setSize(64)">64</button>
+              <button class="btn btn-ghost btn-sm size-btn" data-size="128" onclick="setSize(128)">128</button>
+            </div>
+            <div style="font-size:0.72rem;color:var(--text-dim);margin-top:5px" id="sizeHint">
+              32-player · 8 groups of 4 · QF → SF → Final
+            </div>
           </div>
-          <button class="btn btn-cyan" onclick="createTournament()">Create Tournament →</button>
+
+          <!-- Format picker -->
+          <div class="form-row" style="margin-bottom:20px">
+            <label class="form-label">Tournament Format</label>
+            <div class="format-toggle">
+              <button class="format-opt active" id="fmtGroupKnockout" onclick="setFormat('group_knockout')">
+                🏟️ Group Stage + Knockout
+              </button>
+              <button class="format-opt" id="fmtKnockout" onclick="setFormat('knockout')">
+                ⚡ Pure Knockout / Cup
+              </button>
+            </div>
+            <div class="format-desc" id="formatDesc">
+              Players split into groups. Top 2 per group advance to a knockout bracket through to the Final.
+            </div>
+          </div>
+
+          <button class="btn btn-cyan btn-lg" onclick="createTournament()">Create Tournament →</button>
         </div>
       </div>
 
-      <!-- Tournament list -->
-      <div class="section-header"><div class="section-title">ALL TOURNAMENTS</div></div>
+      <!-- ── TOURNAMENT LIST ── -->
+      <div class="section-header">
+        <div class="section-title">ALL TOURNAMENTS</div>
+        <button class="btn btn-ghost btn-sm" onclick="loadAdminTournaments()">↻ Refresh</button>
+      </div>
       <div id="adminTournamentList"></div>
     </div>
   </div>
 </div>
 
-<!-- Matches modal for a tournament -->
+<!-- ── MATCHES MODAL ── -->
 <div class="modal-backdrop" id="matchModal">
-  <div class="modal" style="max-width:700px;width:95vw">
+  <div class="modal" style="max-width:720px;width:95vw">
     <div class="modal-title" id="matchModalTitle">MATCHES</div>
     <div id="matchModalMsg"></div>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
@@ -105,178 +150,274 @@
   let currentTid = null;
   let allAdminMatches = [];
   let matchFilter = 'all';
+  let selectedSize = 32;
+  let selectedFormat = 'group_knockout';
 
-  document.getElementById('adminPwd').addEventListener('keydown', e => { if(e.key==='Enter') adminLogin(); });
+  document.getElementById('adminPwd').addEventListener('keydown', e => {
+    if (e.key === 'Enter') adminLogin();
+  });
 
+  // ── Size / Format selection ──────────────────────────────────
+  const sizeInfo = {
+    8:   {
+      group_knockout: '8 players · 2 groups of 4 · SF → Final',
+      knockout:       '8 players · QF → SF → Final'
+    },
+    16:  {
+      group_knockout: '16 players · 4 groups of 4 · SF → Final',
+      knockout:       '16 players · R16 → QF → SF → Final'
+    },
+    32:  {
+      group_knockout: '32 players · 8 groups of 4 · QF → SF → Final',
+      knockout:       '32 players · R32 → R16 → QF → SF → Final'
+    },
+    64:  {
+      group_knockout: '64 players · 16 groups of 4 · R16 → QF → SF → Final',
+      knockout:       '64 players · R64 → R32 → R16 → QF → SF → Final'
+    },
+    128: {
+      group_knockout: '128 players · 32 groups of 4 → R32 → ... → Final',
+      knockout:       '128 players · R128 → R64 → ... → Final'
+    }
+  };
+
+  const formatDesc = {
+    group_knockout: 'Players split into groups. Top 2 per group advance to a knockout bracket through to the Final.',
+    knockout:       'Single elimination cup. Every loss = eliminated. Winner of each match advances to the next round.'
+  };
+
+  function updateHints() {
+    document.getElementById('sizeHint').textContent    = sizeInfo[selectedSize][selectedFormat];
+    document.getElementById('formatDesc').textContent  = formatDesc[selectedFormat];
+  }
+
+  window.setSize = function(s) {
+    selectedSize = s;
+    document.querySelectorAll('.size-btn').forEach(b => {
+      b.className = b.dataset.size == s ? 'btn btn-cyan btn-sm size-btn' : 'btn btn-ghost btn-sm size-btn';
+    });
+    updateHints();
+  };
+
+  window.setFormat = function(f) {
+    selectedFormat = f;
+    document.getElementById('fmtGroupKnockout').className =
+      'format-opt' + (f === 'group_knockout' ? ' active' : '');
+    document.getElementById('fmtKnockout').className =
+      'format-opt' + (f === 'knockout' ? ' active' : '');
+    updateHints();
+  };
+
+  // ── Admin login ──────────────────────────────────────────────
   async function adminLogin() {
     const pwd = document.getElementById('adminPwd').value;
     if (!pwd) return;
-    // Quick verify with a lightweight admin request
+
+    // Verify by attempting a real admin action then cleaning up
     try {
-      const res = await fetch('/api/tournaments', { method:'GET' });
-      // We verify password by trying an admin action
       const testRes = await fetch('/api/tournaments', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({password: pwd, name:'__test__', max_players:16})
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pwd, name: '__test__', max_players: 8, format: 'knockout' })
       });
       if (testRes.status === 403) {
-        document.getElementById('loginMsg').innerHTML = '<div class="alert alert-error">Wrong password.</div>';
+        document.getElementById('loginMsg').innerHTML =
+          '<div class="alert alert-error">Wrong password.</div>';
         return;
       }
-      // Delete the test tournament if it was created
       const testData = await testRes.json();
-      if (testData.tournament) {
+      if (testData.tournament?.id) {
         await fetch(`/api/tournaments/${testData.tournament.id}`, {
-          method:'DELETE', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({password: pwd})
+          method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pwd })
         });
       }
-    } catch(e) {}
+    } catch (e) {}
 
     adminPwd = pwd;
-    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('loginWrap').style.display  = 'none';
     document.getElementById('adminPanel').style.display = 'flex';
     loadAdminTournaments();
   }
 
   function adminLogout() {
     adminPwd = '';
-    document.getElementById('loginWrap').style.display = 'flex';
+    document.getElementById('loginWrap').style.display  = 'flex';
     document.getElementById('adminPanel').style.display = 'none';
     document.getElementById('adminPwd').value = '';
   }
 
+  // ── Load tournament list ─────────────────────────────────────
   async function loadAdminTournaments() {
     const res = await fetch('/api/tournaments');
     const tournaments = await res.json();
     const el = document.getElementById('adminTournamentList');
 
     if (!tournaments.length) {
-      el.innerHTML = '<div class="empty"><div class="empty-icon">🏆</div><div class="empty-title">NO TOURNAMENTS YET</div><div class="empty-sub">Create one above to get started.</div></div>';
+      el.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">🏆</div>
+          <div class="empty-title">NO TOURNAMENTS YET</div>
+          <div class="empty-sub">Create one above to get started.</div>
+        </div>`;
       return;
     }
 
-    el.innerHTML = tournaments.map(t => {
-      const statusMap = {
-        registration: { chip:'chip-green', label:'● Open' },
-        group_stage:  { chip:'chip-cyan',  label:'● Groups' },
-        knockout:     { chip:'chip-gold',  label:'● Knockout' },
-        completed:    { chip:'chip-dim',   label:'✓ Done' },
-      };
-      const s = statusMap[t.status] || statusMap.completed;
-      const pct = Math.round((t.registered_count / t.max_players)*100);
+    const statusMap = {
+      registration: { chip: 'chip-green', label: '● Open' },
+      group_stage:  { chip: 'chip-cyan',  label: '● Groups' },
+      knockout:     { chip: 'chip-gold',  label: '● Knockout' },
+      completed:    { chip: 'chip-dim',   label: '✓ Done' },
+    };
 
-      // Build action buttons based on status
+    const formatLabel = {
+      group_knockout: '🏟️ Groups + KO',
+      knockout:       '⚡ Cup / KO',
+    };
+
+    el.innerHTML = tournaments.map(t => {
+      const s   = statusMap[t.status] || statusMap.completed;
+      const pct = Math.round(((t.registered_count || 0) / t.max_players) * 100);
+      const fmt = formatLabel[t.format] || t.format;
+
+      // Build contextual action buttons
       let actions = '';
+
       if (t.status === 'registration') {
-        actions += `<button class="btn btn-cyan btn-sm" onclick="generateGroups(${t.id})">🎲 Generate Groups</button>`;
+        if (t.format === 'group_knockout') {
+          actions += `<button class="btn btn-cyan btn-sm" onclick="generateGroups(${t.id})">🎲 Generate Groups</button>`;
+        } else {
+          actions += `<button class="btn btn-cyan btn-sm" onclick="generateKnockout(${t.id})">⚡ Generate Bracket</button>`;
+        }
       }
+
       if (t.status === 'group_stage') {
-        actions += `<button class="btn btn-cyan btn-sm" onclick="openMatchModal(${t.id}, '${t.name.replace(/'/g,"\\'")}')">⚽ Manage Matches</button>`;
-        actions += `<button class="btn btn-gold btn-sm" onclick="generateKnockout(${t.id})">🏆 Gen Knockout</button>`;
+        actions += `<button class="btn btn-cyan btn-sm" onclick="openMatchModal(${t.id}, '${esc(t.name)}')">⚽ Manage Matches</button>`;
+        actions += `<button class="btn btn-gold btn-sm" onclick="generateKnockout(${t.id})">🏆 Generate Knockout</button>`;
       }
+
       if (t.status === 'knockout') {
-        actions += `<button class="btn btn-cyan btn-sm" onclick="openMatchModal(${t.id}, '${t.name.replace(/'/g,"\\'")}')">⚽ Manage Matches</button>`;
-        actions += `<button class="btn btn-ghost btn-sm" onclick="setStatus(${t.id},'completed')">✓ Complete</button>`;
+        actions += `<button class="btn btn-cyan btn-sm" onclick="openMatchModal(${t.id}, '${esc(t.name)}')">⚽ Manage Matches</button>`;
+        actions += `<button class="btn btn-ghost btn-sm" onclick="setStatus(${t.id},'completed')">✓ Mark Complete</button>`;
       }
-      actions += `<button class="btn btn-ghost btn-sm" onclick="deleteTournament(${t.id})">🗑</button>`;
+
+      if (t.status === 'completed') {
+        actions += `<button class="btn btn-ghost btn-sm" onclick="openMatchModal(${t.id}, '${esc(t.name)}')">📋 View Results</button>`;
+      }
+
+      actions += `<button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteTournament(${t.id})">🗑 Delete</button>`;
 
       return `
         <div class="t-card">
-          <div class="t-card-header">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
             <div>
               <div class="t-card-name">${t.name}</div>
               <div style="display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap">
                 <span class="chip ${s.chip}">${s.label}</span>
-                <span style="font-size:0.72rem;color:var(--text-dim)">${t.max_players}-player · ${t.registered_count} registered</span>
+                <span class="chip chip-dim">${t.max_players} players</span>
+                <span class="chip chip-dim">${fmt}</span>
               </div>
             </div>
+            <div style="text-align:right;min-width:130px">
+              <div style="font-size:0.68rem;letter-spacing:1px;color:var(--text-dim);text-transform:uppercase;margin-bottom:4px">Registrations</div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+              <div style="font-size:0.72rem;color:var(--text-dim);margin-top:3px">${t.registered_count || 0} / ${t.max_players}</div>
+            </div>
           </div>
-          <div class="progress-bar" style="margin-bottom:12px"><div class="progress-fill" style="width:${pct}%"></div></div>
           <div class="t-card-actions">${actions}</div>
         </div>`;
     }).join('');
   }
 
+  // ── Create tournament ────────────────────────────────────────
   async function createTournament() {
     const name = document.getElementById('tName').value.trim();
-    const max_players = parseInt(document.getElementById('tSize').value);
-    const description = document.getElementById('tDesc').value.trim();
+    const desc = document.getElementById('tDesc').value.trim();
     if (!name) { showAdminMsg('Tournament name required.', 'error'); return; }
 
     try {
       const res = await fetch('/api/tournaments', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({password:adminPwd, name, description, max_players})
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password:    adminPwd,
+          name,
+          description: desc,
+          max_players: selectedSize,
+          format:      selectedFormat
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || data.error);
-      showAdminMsg(`"${name}" created!`, 'success');
+      showAdminMsg(`"${name}" created! (${selectedSize} players, ${selectedFormat === 'knockout' ? 'Cup/Knockout' : 'Group + Knockout'})`, 'success');
       document.getElementById('tName').value = '';
       document.getElementById('tDesc').value = '';
       loadAdminTournaments();
-    } catch(err) { showAdminMsg(err.message, 'error'); }
+    } catch (err) { showAdminMsg(err.message, 'error'); }
   }
 
+  // ── Generate groups ──────────────────────────────────────────
   async function generateGroups(tid) {
-    if (!confirm('Generate random group draw? This will lock registrations and create fixtures.')) return;
+    if (!confirm('Generate random group draw? Registration will close.')) return;
     try {
       showAdminMsg('Generating groups...', 'info');
       const res = await fetch(`/api/tournaments/${tid}/groups/generate`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({password:adminPwd})
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPwd })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || data.error);
       showAdminMsg(data.message, 'success');
       loadAdminTournaments();
-    } catch(err) { showAdminMsg(err.message, 'error'); }
+    } catch (err) { showAdminMsg(err.message, 'error'); }
   }
 
+  // ── Generate knockout bracket ────────────────────────────────
   async function generateKnockout(tid) {
-    if (!confirm('Generate knockout bracket from current group standings?')) return;
+    if (!confirm('Generate knockout bracket? This will use current group standings for seeding.')) return;
     try {
       showAdminMsg('Generating bracket...', 'info');
       const res = await fetch(`/api/tournaments/${tid}/matches/generate-knockout`, {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({password:adminPwd})
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPwd })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || data.error);
       showAdminMsg(data.message, 'success');
       loadAdminTournaments();
-    } catch(err) { showAdminMsg(err.message, 'error'); }
+    } catch (err) { showAdminMsg(err.message, 'error'); }
   }
 
+  // ── Set status ───────────────────────────────────────────────
   async function setStatus(tid, status) {
     try {
       const res = await fetch(`/api/tournaments/${tid}/status`, {
-        method:'PUT', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({password:adminPwd, status})
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPwd, status })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       showAdminMsg(data.message, 'success');
       loadAdminTournaments();
-    } catch(err) { showAdminMsg(err.message, 'error'); }
+    } catch (err) { showAdminMsg(err.message, 'error'); }
   }
 
+  // ── Delete tournament ────────────────────────────────────────
   async function deleteTournament(tid) {
-    if (!confirm('DELETE this tournament and all its data? This cannot be undone.')) return;
+    if (!confirm('DELETE this tournament and ALL its data? This cannot be undone.')) return;
     try {
       const res = await fetch(`/api/tournaments/${tid}`, {
-        method:'DELETE', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({password:adminPwd})
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPwd })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       showAdminMsg('Tournament deleted.', 'success');
       loadAdminTournaments();
-    } catch(err) { showAdminMsg(err.message, 'error'); }
+    } catch (err) { showAdminMsg(err.message, 'error'); }
   }
 
+  // ── Match modal ──────────────────────────────────────────────
   async function openMatchModal(tid, name) {
-    currentTid = tid;
+    currentTid  = tid;
     matchFilter = 'all';
     document.getElementById('matchModalTitle').textContent = `MATCHES — ${name.toUpperCase()}`;
     document.getElementById('matchModal').classList.add('open');
@@ -293,21 +434,25 @@
 
   function renderMatchModal() {
     let list = allAdminMatches;
-    if (matchFilter === 'pending') list = allAdminMatches.filter(m => !m.confirmed);
+    if (matchFilter === 'pending')   list = allAdminMatches.filter(m => !m.confirmed);
     if (matchFilter === 'confirmed') list = allAdminMatches.filter(m => m.confirmed);
 
     const el = document.getElementById('matchModalList');
-    if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-dim)">No matches found.</div>'; return; }
+    if (!list.length) {
+      el.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-dim)">No matches found.</div>';
+      return;
+    }
 
     el.innerHTML = list.map(m => {
-      const hasScore = m.home_score !== null && m.away_score !== null;
-      const scoreDisp = hasScore ? `${m.home_score} – ${m.away_score}` : '– vs –';
-      const stageLabel = (m.stage || 'group').replace(/-/g,' ').replace(/\b\w/g,l=>l.toUpperCase());
-      const groupTag = m.group_name ? ` · Grp ${m.group_name}` : '';
+      const hasScore  = m.home_score !== null && m.away_score !== null;
+      const scoreDisp = hasScore ? `${m.home_score} – ${m.away_score}` : '— vs —';
+      const stageLabel = (m.stage || 'group').replace(/-/g,' ').replace(/\b\w/g, l => l.toUpperCase());
+      const groupTag   = m.group_name ? ` · Grp ${m.group_name}` : '';
 
       return `
-        <div class="match-row ${m.confirmed?'':''}">
-          <div style="font-size:0.65rem;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);min-width:80px">${stageLabel}${groupTag}</div>
+        <div class="match-row">
+          <div style="font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;
+                      color:var(--text-dim);min-width:90px;white-space:nowrap">${stageLabel}${groupTag}</div>
           <div class="match-teams">
             <div style="font-weight:600">${m.home_player}</div>
             <div style="font-size:0.75rem;color:var(--text-dim)">${m.home_team_name}</div>
@@ -318,8 +463,10 @@
             <div style="font-size:0.75rem;color:var(--text-dim)">${m.away_team_name}</div>
           </div>
           ${m.confirmed
-            ? '<span class="chip chip-green" style="white-space:nowrap">✓ Locked</span>'
-            : `<button class="btn btn-red btn-sm" onclick="confirmMatch(${m.id})" ${!hasScore?'disabled title="No score entered"':''}>Confirm</button>`
+            ? '<span class="chip chip-green" style="white-space:nowrap;flex-shrink:0">✓ Locked</span>'
+            : `<button class="btn btn-red btn-sm" style="flex-shrink:0"
+                onclick="confirmMatch(${m.id})"
+                ${!hasScore ? 'disabled title="No score entered yet"' : ''}>Confirm</button>`
           }
         </div>`;
     }).join('');
@@ -328,28 +475,28 @@
   async function confirmMatch(id) {
     try {
       const res = await fetch(`/api/tournaments/${currentTid}/matches/${id}/confirm`, {
-        method:'PUT', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({password:adminPwd})
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPwd })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       showMatchMsg(data.message, 'success');
       await loadMatchModal();
-    } catch(err) { showMatchMsg(err.message, 'error'); }
+    } catch (err) { showMatchMsg(err.message, 'error'); }
   }
 
   async function confirmAllMatches() {
     if (!confirm('Confirm ALL matches that have scores entered?')) return;
     try {
       const res = await fetch(`/api/tournaments/${currentTid}/matches/confirm-all`, {
-        method:'PUT', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({password:adminPwd})
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPwd })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
       showMatchMsg(data.message, 'success');
       await loadMatchModal();
-    } catch(err) { showMatchMsg(err.message, 'error'); }
+    } catch (err) { showMatchMsg(err.message, 'error'); }
   }
 
   window.closeMatchModal = function() {
@@ -362,16 +509,20 @@
     if (e.target === e.currentTarget) closeMatchModal();
   });
 
-  function showAdminMsg(text, type='info') {
+  function showAdminMsg(text, type = 'info') {
     const el = document.getElementById('adminMsg');
     el.innerHTML = `<div class="alert alert-${type}">${text}</div>`;
-    if (type !== 'error') setTimeout(()=>el.innerHTML='', 4000);
+    if (type !== 'error') setTimeout(() => el.innerHTML = '', 5000);
   }
 
-  function showMatchMsg(text, type='info') {
+  function showMatchMsg(text, type = 'info') {
     const el = document.getElementById('matchModalMsg');
     el.innerHTML = `<div class="alert alert-${type}">${text}</div>`;
-    if (type !== 'error') setTimeout(()=>el.innerHTML='', 3000);
+    if (type !== 'error') setTimeout(() => el.innerHTML = '', 3000);
+  }
+
+  function esc(str) {
+    return (str || '').replace(/'/g, "\\'");
   }
 </script>
 </body>

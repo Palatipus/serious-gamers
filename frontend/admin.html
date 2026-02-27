@@ -425,8 +425,14 @@
   }
 
   async function loadMatchModal() {
-    const res = await fetch(`/api/tournaments/${currentTid}/matches`);
-    allAdminMatches = await res.json();
+    const [mRes, mdRes] = await Promise.all([
+      fetch(`/api/tournaments/${currentTid}/matches?all=true`),
+      fetch(`/api/tournaments/${currentTid}/matchday`)
+    ]);
+    allAdminMatches = await mRes.json();
+    const mdInfo = await mdRes.json();
+    window._adminCurrentMD = mdInfo.current_matchday || 1;
+    window._adminTotalMD   = mdInfo.total_matchdays  || 0;
     renderMatchModal();
   }
 
@@ -443,33 +449,81 @@
       return;
     }
 
-    el.innerHTML = list.map(m => {
-      const hasScore  = m.home_score !== null && m.away_score !== null;
-      const scoreDisp = hasScore ? `${m.home_score} – ${m.away_score}` : '— vs —';
-      const stageLabel = (m.stage || 'group').replace(/-/g,' ').replace(/\b\w/g, l => l.toUpperCase());
-      const groupTag   = m.group_name ? ` · Grp ${m.group_name}` : '';
+    // Group matches by matchday (group stage) then knockout stages
+    const groupMatches    = list.filter(m => m.stage === 'group');
+    const knockoutMatches = list.filter(m => m.stage !== 'group');
 
-      return `
-        <div class="match-row">
-          <div style="font-size:0.62rem;letter-spacing:1px;text-transform:uppercase;
-                      color:var(--text-dim);min-width:90px;white-space:nowrap">${stageLabel}${groupTag}</div>
-          <div class="match-teams">
-            <div style="font-weight:600">${m.home_player}</div>
-            <div style="font-size:0.75rem;color:var(--text-dim)">${m.home_team_name}</div>
-          </div>
-          <div class="match-score-disp">${scoreDisp}</div>
-          <div class="match-teams" style="text-align:right">
-            <div style="font-weight:600">${m.away_player}</div>
-            <div style="font-size:0.75rem;color:var(--text-dim)">${m.away_team_name}</div>
-          </div>
-          ${m.confirmed
-            ? '<span class="chip chip-green" style="white-space:nowrap;flex-shrink:0">✓ Locked</span>'
-            : `<button class="btn btn-red btn-sm" style="flex-shrink:0"
-                onclick="confirmMatch(${m.id})"
-                ${!hasScore ? 'disabled title="No score entered yet"' : ''}>Confirm</button>`
-          }
-        </div>`;
-    }).join('');
+    let html = '';
+
+    // Group stage — show by matchday
+    if (groupMatches.length) {
+      const matchdays = [...new Set(groupMatches.map(m => m.matchday || 1))].sort((a,b)=>a-b);
+      matchdays.forEach(md => {
+        const mdMatches     = groupMatches.filter(m => (m.matchday||1) === md);
+        const allConfirmed  = mdMatches.every(m => m.confirmed);
+        const hasScores     = mdMatches.filter(m => m.home_score !== null && m.away_score !== null && !m.confirmed).length;
+        const isCurrent     = md === window._adminCurrentMD;
+
+        html += `
+          <div style="margin-bottom:20px">
+            <div style="display:flex;align-items:center;justify-content:space-between;
+                        padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:10px;gap:10px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim)">
+                  Matchday ${md}
+                </span>
+                ${isCurrent ? '<span class="chip chip-cyan" style="font-size:0.6rem">Current</span>' : ''}
+                ${allConfirmed ? '<span class="chip chip-green" style="font-size:0.6rem">✓ All Confirmed</span>' : ''}
+              </div>
+              ${hasScores && !allConfirmed ? `
+                <button class="btn btn-red btn-sm" onclick="confirmMatchday(${md})" style="font-size:0.72rem">
+                  Confirm MD${md} (${hasScores} matches)
+                </button>` : ''}
+            </div>
+            ${mdMatches.map(m => matchRow(m)).join('')}
+          </div>`;
+      });
+    }
+
+    // Knockout
+    if (knockoutMatches.length) {
+      html += `<div style="font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:10px">Knockout Rounds</div>`;
+      html += knockoutMatches.map(m => matchRow(m)).join('');
+    }
+
+    el.innerHTML = html;
+  }
+
+  function matchRow(m) {
+    const hasScore  = m.home_score !== null && m.away_score !== null;
+    const scoreDisp = hasScore ? `${m.home_score} – ${m.away_score}` : '— vs —';
+    const stageLabel = (m.stage || 'group').replace(/-/g,' ').replace(/\b\w/g, l => l.toUpperCase());
+    const groupTag   = m.group_name ? ` · Grp ${m.group_name}` : '';
+    const screenshot = m.screenshot_url
+      ? `<img src="${m.screenshot_url}" style="width:40px;height:40px;object-fit:cover;border-radius:5px;border:1px solid rgba(0,224,122,0.3);cursor:pointer;flex-shrink:0"
+             onclick="window.open('${m.screenshot_url}','_blank')" title="View screenshot">`
+      : `<div style="width:40px;height:40px;border-radius:5px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:0.7rem;color:var(--text-dim);flex-shrink:0">📷</div>`;
+
+    return `
+      <div class="match-row">
+        <div style="font-size:0.6rem;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);min-width:70px;white-space:nowrap">${stageLabel}${groupTag}</div>
+        <div class="match-teams">
+          <div style="font-weight:600">${m.home_player}</div>
+          <div style="font-size:0.72rem;color:var(--text-dim)">${m.home_team_name}</div>
+        </div>
+        <div class="match-score-disp">${scoreDisp}</div>
+        <div class="match-teams" style="text-align:right">
+          <div style="font-weight:600">${m.away_player}</div>
+          <div style="font-size:0.72rem;color:var(--text-dim)">${m.away_team_name}</div>
+        </div>
+        ${screenshot}
+        ${m.confirmed
+          ? '<span class="chip chip-green" style="white-space:nowrap;flex-shrink:0">✓ Locked</span>'
+          : `<button class="btn btn-red btn-sm" style="flex-shrink:0"
+              onclick="confirmMatch(${m.id})"
+              ${!hasScore ? 'disabled title="No score entered yet"' : ''}>Confirm</button>`
+        }
+      </div>`;
   }
 
   async function confirmMatch(id) {
@@ -485,8 +539,22 @@
     } catch (err) { showMatchMsg(err.message, 'error'); }
   }
 
+  async function confirmMatchday(md) {
+    if (!confirm(`Confirm all Matchday ${md} matches that have scores?`)) return;
+    try {
+      const res = await fetch(`/api/tournaments/${currentTid}/matches/confirm-all`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: adminPwd, matchday: md })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      showMatchMsg(data.message + ` Matchday ${md+1} now unlocked for players!`, 'success');
+      await loadMatchModal();
+    } catch (err) { showMatchMsg(err.message, 'error'); }
+  }
+
   async function confirmAllMatches() {
-    if (!confirm('Confirm ALL matches that have scores entered?')) return;
+    if (!confirm('Confirm ALL matches across all matchdays that have scores entered?')) return;
     try {
       const res = await fetch(`/api/tournaments/${currentTid}/matches/confirm-all`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },

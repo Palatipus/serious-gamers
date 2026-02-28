@@ -125,35 +125,31 @@ router.put('/tournaments/:tid/matches/:id/score', async (req, res) => {
   }
 });
 
-// ── UPLOAD screenshot → get public URL ──────────────────────────
-// Accepts base64 image, stores in Supabase Storage, returns public URL
-router.post('/tournaments/:tid/matches/:id/screenshot', async (req, res) => {
-  const { image_base64, content_type } = req.body;
-  if (!image_base64) return res.status(400).json({ message: 'No image data.' });
-
+// ── GENERATE signed upload URL for direct browser → Supabase upload ──
+router.post('/tournaments/:tid/matches/:id/screenshot-url', async (req, res) => {
   try {
-    const matchId = req.params.id;
-
-    // Normalize content type — HEIC/HEIF from iOS needs special handling
-    let mimeType = content_type || 'image/jpeg';
-    if (mimeType.includes('heic') || mimeType.includes('heif')) mimeType = 'image/jpeg';
-
-    // Simple numeric filename only — avoids all pattern issues
+    const matchId  = req.params.id;
     const fileName = `${matchId}${Date.now()}.jpg`;
-    const buffer   = Buffer.from(image_base64, 'base64');
 
-    // Try upload
-    const { data: uploadData, error } = await supabaseAdmin.storage
+    // Create signed upload URL — browser uploads directly, no base64 needed
+    const { data, error } = await supabaseAdmin.storage
       .from('screenshots')
-      .upload(fileName, buffer, { contentType: 'image/jpeg', upsert: true });
+      .createSignedUploadUrl(fileName);
 
     if (error) {
-      console.error('Storage upload error:', error);
+      console.error('Signed URL error:', error);
       throw new Error(error.message);
     }
 
-    const { data: urlData } = supabaseAdmin.storage.from('screenshots').getPublicUrl(fileName);
-    res.json({ url: urlData.publicUrl });
+    const { data: urlData } = supabaseAdmin.storage
+      .from('screenshots')
+      .getPublicUrl(fileName);
+
+    res.json({
+      upload_url: data.signedUrl,
+      token:      data.token,
+      public_url: urlData.publicUrl
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

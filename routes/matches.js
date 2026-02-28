@@ -138,21 +138,19 @@ router.post('/tournaments/:tid/matches/:id/screenshot', async (req, res) => {
     let mimeType = content_type || 'image/jpeg';
     if (mimeType.includes('heic') || mimeType.includes('heif')) mimeType = 'image/jpeg';
 
-    // Safe file extension
-    const extMap = { 'image/jpeg':'jpg', 'image/jpg':'jpg', 'image/png':'png',
-                     'image/gif':'gif', 'image/webp':'webp' };
-    const ext = extMap[mimeType] || 'jpg';
+    // Simple numeric filename only — avoids all pattern issues
+    const fileName = `${matchId}${Date.now()}.jpg`;
+    const buffer   = Buffer.from(image_base64, 'base64');
 
-    // Safe path — no special characters
-    const fileName = `match_${matchId}_${Date.now()}.${ext}`;
-
-    const buffer = Buffer.from(image_base64, 'base64');
-
-    const { error } = await supabaseAdmin.storage
+    // Try upload
+    const { data: uploadData, error } = await supabaseAdmin.storage
       .from('screenshots')
-      .upload(fileName, buffer, { contentType: mimeType, upsert: true });
+      .upload(fileName, buffer, { contentType: 'image/jpeg', upsert: true });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Storage upload error:', error);
+      throw new Error(error.message);
+    }
 
     const { data: urlData } = supabaseAdmin.storage.from('screenshots').getPublicUrl(fileName);
     res.json({ url: urlData.publicUrl });

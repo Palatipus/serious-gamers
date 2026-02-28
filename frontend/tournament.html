@@ -444,55 +444,41 @@ function buildMatchCard(m) {
     </div>`;
 }
 
-// Convert any image (including HEIC) to JPEG via canvas
-async function toJpegBase64(file) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width  = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      canvas.getContext('2d').drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      // Export as JPEG, quality 0.85
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-      resolve(dataUrl.split(',')[1]);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Could not read image. Try a JPEG or PNG file.'));
-    };
-    img.src = url;
-  });
-}
-
 async function handleImageUpload(input) {
   const matchId  = input.dataset.match;
   const file     = input.files[0];
   if (!file) return;
 
   const statusEl = document.getElementById(`upload-status-${matchId}`);
-  if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-dim)">Converting & uploading...</span>';
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-dim)">Uploading...</span>';
 
   try {
-    // Convert to JPEG via canvas — works for HEIC, PNG, WEBP, everything
-    const base64 = await toJpegBase64(file);
-
-    const res  = await fetch(`/api/tournaments/${tid}/matches/${matchId}/screenshot`, {
+    // Upload directly to Supabase Storage via signed URL from backend
+    const tokenRes = await fetch(`/api/tournaments/${tid}/matches/${matchId}/screenshot-url`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_base64: base64, content_type: 'image/jpeg' })
+      body: JSON.stringify({ filename: `${matchId}${Date.now()}.jpg` })
     });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || data.message);
+    const tokenData = await tokenRes.json();
+    if (!tokenRes.ok) throw new Error(tokenData.error || tokenData.message);
 
-    // Save the URL to the match
+    // Upload the raw file directly to Supabase — no base64, no conversion needed
+    const uploadRes = await fetch(tokenData.upload_url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
+      body: file
+    });
+    if (!uploadRes.ok) {
+      const txt = await uploadRes.text();
+      throw new Error('Storage error: ' + txt);
+    }
+
+    // Save the public URL to the match
     await fetch(`/api/tournaments/${tid}/matches/${matchId}/score`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         home_score: parseInt(document.getElementById(`hs_${matchId}`)?.value) || 0,
         away_score: parseInt(document.getElementById(`as_${matchId}`)?.value) || 0,
-        screenshot_url: data.url
+        screenshot_url: tokenData.public_url
       })
     });
 

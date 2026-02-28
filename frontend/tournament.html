@@ -444,26 +444,44 @@ function buildMatchCard(m) {
     </div>`;
 }
 
+// Convert any image (including HEIC) to JPEG via canvas
+async function toJpegBase64(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+      // Export as JPEG, quality 0.85
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      resolve(dataUrl.split(',')[1]);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not read image. Try a JPEG or PNG file.'));
+    };
+    img.src = url;
+  });
+}
+
 async function handleImageUpload(input) {
   const matchId  = input.dataset.match;
   const file     = input.files[0];
   if (!file) return;
 
   const statusEl = document.getElementById(`upload-status-${matchId}`);
-  if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-dim)">Uploading...</span>';
+  if (statusEl) statusEl.innerHTML = '<span style="color:var(--text-dim)">Converting & uploading...</span>';
 
   try {
-    // Read as base64
-    const base64 = await new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload  = e => resolve(e.target.result.split(',')[1]);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
+    // Convert to JPEG via canvas — works for HEIC, PNG, WEBP, everything
+    const base64 = await toJpegBase64(file);
 
     const res  = await fetch(`/api/tournaments/${tid}/matches/${matchId}/screenshot`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image_base64: base64, content_type: file.type })
+      body: JSON.stringify({ image_base64: base64, content_type: 'image/jpeg' })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || data.message);

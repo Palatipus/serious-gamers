@@ -169,13 +169,60 @@ router.put('/tournaments/:tid/matches/:id/confirm', async (req, res) => {
       return res.status(400).json({ message: 'Enter scores before confirming.' });
 
     await supabase.from('matches').update({ confirmed: true }).eq('id', req.params.id);
-    if (match.stage === 'group') await updateStandings(match);
+
+    if (match.stage === 'group') {
+      await updateStandings(match);
+    } else {
+      await advanceWinner(match);
+    }
 
     res.json({ message: 'Match confirmed!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ── AUTO-ADVANCE winner to next knockout round ───────────────────
+async function advanceWinner(match) {
+  const { tournament_id, stage, match_order, home_score, away_score,
+          home_team_id, away_team_id, home_reg_id, away_reg_id } = match;
+
+  const homeWon   = parseInt(home_score) > parseInt(away_score);
+  const winTeamId = homeWon ? home_team_id : away_team_id;
+  const winRegId  = homeWon ? home_reg_id  : away_reg_id;
+
+  const nextStage = getNextStage(stage);
+  if (!nextStage) return;
+
+  // Odd match_order → home slot of next match, Even → away slot
+  const nextMatchOrder = Math.ceil(match_order / 2);
+  const isHome         = match_order % 2 !== 0;
+
+  const { data: nextMatch } = await supabase
+    .from('matches').select('id')
+    .eq('tournament_id', tournament_id)
+    .eq('stage', nextStage)
+    .eq('match_order', nextMatchOrder)
+    .single();
+
+  if (!nextMatch) return;
+
+  const updates = isHome
+    ? { home_team_id: winTeamId, home_reg_id: winRegId }
+    : { away_team_id: winTeamId, away_reg_id: winRegId };
+
+  await supabase.from('matches').update(updates).eq('id', nextMatch.id);
+}
+
+function getNextStage(stage) {
+  const order = [
+    'round-of-128', 'round-of-64', 'round-of-32', 'round-of-16',
+    'quarter-final', 'semi-final', 'final'
+  ];
+  const idx = order.indexOf(stage);
+  if (idx === -1 || idx === order.length - 1) return null;
+  return order[idx + 1];
+}
 
 // ── CONFIRM ALL with scores ──────────────────────────────────────
 router.put('/tournaments/:id/matches/confirm-all', async (req, res) => {
@@ -238,7 +285,13 @@ router.post('/tournaments/:id/matches/generate-knockout', async (req, res) => {
       const runnersUp  = [];
 
       groupNames.forEach(gn => {
-        const gt = (groups || []).filter(g => g.group_name === gn);
+        const gt = (groups || []).filter(g => g.group_name === gn)
+          .sort((a, b) => {
+            if (b.points !== a.points) return b.points - a.points;
+            const gdA = a.gf - a.ga, gdB = b.gf - b.ga;
+            if (gdB !== gdA) return gdB - gdA;
+            return b.gf - a.gf;
+          });
         if (gt[0]) winners.push(gt[0]);
         if (gt[1]) runnersUp.push(gt[1]);
       });

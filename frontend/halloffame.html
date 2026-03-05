@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hall of Fame - Serious Gamers</title>
+  <link rel="stylesheet" href="portal.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    .hof-hero{text-align:center;padding:48px 20px 32px}
+    .hof-icon{font-size:4rem;display:block;margin-bottom:12px;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 0 20px rgba(255,215,0,.4))}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+    .hof-title{font-family:'Cinzel',serif;font-size:clamp(1.8rem,6vw,2.8rem);font-weight:900;letter-spacing:6px;background:linear-gradient(135deg,#FFD700,#FFA500,#FFD700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px}
+    .hof-sub{font-size:.72rem;letter-spacing:4px;text-transform:uppercase;color:var(--text-dim)}
+    .trophy-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;padding-bottom:60px}
+    .trophy-card{position:relative;background:linear-gradient(145deg,rgba(255,215,0,.06),rgba(255,165,0,.02));border:1px solid rgba(255,215,0,.2);border-radius:16px;padding:28px 24px 24px;overflow:hidden;cursor:pointer;transition:transform .2s,border-color .2s,box-shadow .2s}
+    .trophy-card:hover{transform:translateY(-4px);border-color:rgba(255,215,0,.5);box-shadow:0 8px 32px rgba(255,215,0,.15)}
+    .trophy-num{position:absolute;top:14px;right:18px;font-family:'Bebas Neue',cursive;font-size:3rem;color:rgba(255,215,0,.07);line-height:1;pointer-events:none}
+    .trophy-meta{font-size:.62rem;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:8px}
+    .trophy-tname{font-family:'Bebas Neue',cursive;font-size:1.4rem;letter-spacing:2px;margin-bottom:4px}
+    .trophy-divider{height:1px;background:linear-gradient(90deg,transparent,rgba(255,215,0,.3),transparent);margin-bottom:16px}
+    .trophy-winner-label{font-size:.6rem;letter-spacing:3px;text-transform:uppercase;color:#FFA500;margin-bottom:6px}
+    .trophy-winner-name{font-family:'Cinzel',serif;font-size:1.4rem;font-weight:700;background:linear-gradient(135deg,#FFD700,#FFA500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.2}
+    .trophy-winner-team{font-size:.78rem;color:var(--text-dim);margin-top:4px}
+    .trophy-chips{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+    .trophy-chip{font-size:.62rem;padding:3px 8px;border-radius:4px;background:rgba(255,215,0,.08);border:1px solid rgba(255,215,0,.2);color:#FFA500}
+    .shimmer{background:linear-gradient(90deg,var(--surface) 25%,var(--surface2) 50%,var(--surface) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  </style>
+</head>
+<body>
+<div class="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="hamburger" id="hamburgerBtn">&#9776;</button>
+      <span class="topbar-title" style="color:#FFD700">&#127942; HALL OF FAME</span>
+    </div>
+    <div class="topbar-right" id="topbarRight"></div>
+  </div>
+  <div class="page-content">
+    <div class="hof-hero">
+      <span class="hof-icon">&#127942;</span>
+      <div class="hof-title">Hall of Fame</div>
+      <div class="hof-sub">Champions of Serious Gamers</div>
+    </div>
+    <div id="hofList"></div>
+  </div>
+</div>
+<script type="module">
+import { buildNav } from './nav.js';
+buildNav('halloffame');
+
+async function load() {
+  const el = document.getElementById('hofList');
+  el.innerHTML = '<div class="trophy-grid">'
+    + [1,2,3].map(() =>
+        '<div class="trophy-card" style="pointer-events:none">'
+        + '<div class="shimmer" style="height:10px;width:50%;margin-bottom:12px"></div>'
+        + '<div class="shimmer" style="height:22px;width:75%;margin-bottom:18px"></div>'
+        + '<div class="shimmer" style="height:1px;width:100%;margin-bottom:16px"></div>'
+        + '<div class="shimmer" style="height:10px;width:35%;margin-bottom:8px"></div>'
+        + '<div class="shimmer" style="height:26px;width:65%"></div>'
+        + '</div>').join('')
+    + '</div>';
+
+  try {
+    const res  = await fetch('/api/tournaments');
+    const all  = await res.json();
+    const done = all.filter(t => t.status === 'completed');
+
+    if (!done.length) {
+      el.innerHTML = '<div style="text-align:center;padding:80px 20px">'
+        + '<div style="font-size:4rem;opacity:.25;margin-bottom:16px">&#127942;</div>'
+        + '<div style="font-family:Cinzel,serif;font-size:1.1rem;letter-spacing:3px;color:var(--text-dim)">No Champions Yet</div>'
+        + '<div style="font-size:.8rem;color:var(--text-dim);opacity:.6;margin-top:8px">Complete a tournament to crown the first champion.</div>'
+        + '</div>';
+      return;
+    }
+
+    const enriched = await Promise.all(done.map(async (t, i) => {
+      try {
+        const mRes = await fetch('/api/tournaments/' + t.id + '/matches');
+        const ms   = await mRes.json();
+        const fin  = ms.find(m => m.stage === 'final' && m.confirmed);
+        let winner = null, winnerTeam = null;
+        if (fin) {
+          const hw   = fin.home_score > fin.away_score;
+          winner     = hw ? fin.home_player    : fin.away_player;
+          winnerTeam = hw ? fin.home_team_name : fin.away_team_name;
+        }
+        return { ...t, winner, winnerTeam, idx: i + 1 };
+      } catch { return { ...t, winner: null, winnerTeam: null, idx: i + 1 }; }
+    }));
+
+    const fmtDate  = d => d ? new Date(d).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'}) : '';
+    const fmtLabel = { group_knockout: 'Groups + Knockout', knockout: 'Cup / Knockout' };
+
+    el.innerHTML = '<div class="trophy-grid">'
+      + enriched.map(t =>
+          '<div class="trophy-card" onclick="location.href='tournament.html?id=' + t.id + ''">'
+          + '<div class="trophy-num">' + t.idx + '</div>'
+          + '<div class="trophy-meta">' + fmtDate(t.completed_at) + (t.format ? ' &middot; ' + (fmtLabel[t.format] || t.format) : '') + '</div>'
+          + '<div class="trophy-tname">' + t.name + '</div>'
+          + '<div class="trophy-divider"></div>'
+          + '<div class="trophy-winner-label">&#127942; Champion</div>'
+          + (t.winner
+              ? '<div class="trophy-winner-name">' + t.winner + '</div><div class="trophy-winner-team">' + (t.winnerTeam || '') + '</div>'
+              : '<div style="color:var(--text-dim);font-size:.82rem;font-style:italic">Final not confirmed yet</div>')
+          + '<div class="trophy-chips">'
+          + '<span class="trophy-chip">' + t.max_players + ' players</span>'
+          + '<span class="trophy-chip">' + (t.registered_count || 0) + ' registered</span>'
+          + '</div>'
+          + '</div>'
+        ).join('')
+      + '</div>';
+
+  } catch(err) {
+    el.innerHTML = '<div class="alert alert-error">Failed to load: ' + err.message + '</div>';
+  }
+}
+
+load();
+</script>
+</body>
+</html>
